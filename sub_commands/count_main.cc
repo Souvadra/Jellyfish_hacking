@@ -173,6 +173,7 @@ public:
       }
       #endif 
       #if 1
+      std::cout << "Ola Amigo !!" << std::endl; // Souvadra's addition 
       std::cout << "k-mer size: " << mers->k() << std::endl; // Souvadra's addition
       for( ; mers; ++mers) {
         if((*filter_)(*mers)) {
