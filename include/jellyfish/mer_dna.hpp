@@ -27,7 +27,7 @@
 #include <jellyfish/int128.hpp>
 #endif
 
-namespace jellyfish { namespace mer_dna_ns {
+namespace jellyfish { namespace mer_dna_ns {   //Encoding the characters with numbers
 #define R -1
 #define I -2
 #define O -3
@@ -60,7 +60,7 @@ static const int codes[256] = {
 #undef C
 #undef G
 #undef T
-static const char rev_codes[4] = { 'A', 'C', 'G', 'T' };
+static const char rev_codes[4] = { 'A', 'C', 'G', 'T' };    //Reverse encoding the integers with corr characters
 
 
 extern const char* const error_different_k;
@@ -320,6 +320,9 @@ public:
   // 4). The return value is the base that was pushed off the side
   // ('N' if the input character is not a valid base).
   base_type shift_left(int c) {
+
+    //std::cout << "I'm inside base_type shift left (int c) on line 333\n";
+
     const base_type    r       = (_data[nb_words()-1] >> lshift()) & c3;
     const unsigned int barrier = nb_words() & (~c3);
     base_type          c2;    // c2 and c1: carries
@@ -345,6 +348,9 @@ public:
   }
 
   base_type shift_right(int c) {
+
+    //std::cout << "I'm inside base_type shift right (int c) on line 361\n";
+
     const base_type r = _data[0] & c3;
     if(nb_words() > 1){
       const unsigned int barrier = (nb_words() - 1) & (~c3);
@@ -369,6 +375,29 @@ public:
     return r;
   }
 
+  #if 0
+  // I am adding this function to modify m_ and rcm_ in mer_iterator
+  base_type alter_it() {
+    std::cout << "I'm inside alter_it\n";
+  
+    // std::cout << "\n" << _data[0] << "    BEFORE MODIFYING _DATA\n   _data[0]\n";
+    // std::cout << _data[1] << "   _data[1]\n";
+    // std::cout << _data[2] << "   _data[2]\n";
+    // std::cout << _data[3] << "   _data[3]\n\n";
+
+    _data[0] = _data[0] >> 2;
+    _data[2] = _data[2] >> 2;
+
+    // std::cout << "\n" << _data[0] << "    AFTER MODIFYING _DATA\n   _data[0]\n";
+    // std::cout << _data[1] << "   _data[1]\n";
+    // std::cout << _data[2] << "   _data[2]\n";
+    // std::cout << _data[3] << "   _data[3]\n\n";
+
+    const base_type    r       = _data[0] & c3;
+    return r;
+  }
+  #endif
+  
   // Non DNA codes are negative
   inline static bool not_dna(int c) { return c < 0; }
   inline static int code(char c) { return codes[(int)(unsigned char)c]; }
@@ -440,7 +469,10 @@ public:
   // Transform the k-mer into a string. For the char * version,
   // assume that the buffer is large enough to receive k+1
   // characters (space for '\0' at end of string).
-  void to_str(char* s) const {
+  void to_str(char* s) const {                                //search for to_str, changes the pointer to a kmer string
+    
+                                                              // This function is called during dump command not during count
+    //std::cout << "I'm in to_str (char* s) on line 469\n";
     s = to_chars(s);
     *s = '\0';
   }

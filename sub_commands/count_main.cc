@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <signal.h>
+#include <stdlib.h> // Souvadra's addition
 
 #include <cctype>
 #include <iostream>
@@ -155,14 +156,37 @@ public:
 
     switch(op_) {
      case COUNT:
-      for( ; mers; ++mers) {
-        if((*filter_)(*mers))
-          ary_.add(*mers, 1);
+      std::cout << "Counting Happening" << std::endl; // Souvadra's addition
+      #if 0
+      std::cout << "k-emr size:" << mers->k() << std::endl; // Souvadra's addition
+      //int w = mers->k();
+      for (; mers; ++mers) {
+        if((*filter_)(*mers)) {
+          if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {
+            // std::cout << *mers << "is being added to hash" << std::endl;
+            ary_.add(*mers, 1);
+          } //else {
+            // std::cout << *mers << "is NOT being added to hash" << std::endl;
+          //}
+        }
         ++count;
       }
+      #endif 
+      #if 1
+      std::cout << "k-mer size: " << mers->k() << std::endl; // Souvadra's addition
+      for( ; mers; ++mers) {
+        if((*filter_)(*mers)) {
+          //std::cout << *mers << "<-- Souvadra printed out: *mers @count_main.cc @171"<< std::endl;
+          ary_.add(*mers, 1);
+        }
+        ++count;
+        //std::cout << "count: " << count << std::endl; // Souvadra's addition
+      }
+      #endif
       break;
 
     case PRIME:
+      std::cout << "Priming Happening" << std::endl; // Souvadra's addition
       for( ; mers; ++mers) {
         if((*filter_)(*mers))
           ary_.set(*mers);
@@ -171,6 +195,7 @@ public:
       break;
 
     case UPDATE:
+      std::cout << "Update Happning" << std::endl; // Souvadra's addition
       mer_dna tmp;
       for( ; mers; ++mers) {
         if((*filter_)(*mers))
@@ -282,18 +307,20 @@ int count_main(int argc, char *argv[])
   else
     dumper.reset(new binary_dumper(args.out_counter_len_arg, ary.key_len(), args.threads_arg, args.output_arg, &header));
   ary.dumper(dumper.get());
-
+  
+  // Counting is starting here ************************************************************************
   auto after_init_time = system_clock::now();
 
   OPERATION do_op = COUNT;
   if(args.if_given) {
     stream_manager_type streams(args.Files_arg);
     streams.paths(args.if_arg.begin(), args.if_arg.end());
+    std::cout << "count_main.cc @line 292" << std::endl; // Souvadra's addition
     mer_counter counter(args.threads_arg, ary, streams, PRIME);
     counter.exec_join(args.threads_arg);
     do_op = UPDATE;
   }
-
+  std::cout << "count_main.cc @line 299" << std::endl;
   // Iterators to the multi pipe paths. If no generator manager,
   // generate an empty range.
   auto pipes_begin = generator_manager.get() ? generator_manager->pipes().begin() : args.file_arg.end();
@@ -328,9 +355,14 @@ int count_main(int argc, char *argv[])
                              do_op, mer_filter.get());
     counter.exec_join(args.threads_arg);
   } else {
+    // std::cout << do_op << std::endl; // Souvadra's addition
     mer_counter counter(args.threads_arg, ary, streams,
                         do_op, mer_filter.get());
+    std::cout << "count_main.cc @line 335" << std::endl; // Souvadra's addition
+    // THIS IS WHERE THE mer_iterator IS BEING CALLED 
     counter.exec_join(args.threads_arg);
+    // THE ABOVE LINE IS DOING ALL THE mer_iteration WORK
+    std::cout << "count_main.cc @line 339" << std::endl; // Souvadra's addition
   }
 
   // If we have a manager, wait for it
@@ -343,6 +375,7 @@ int count_main(int argc, char *argv[])
   }
 
   auto after_count_time = system_clock::now();
+  // Counting is stopping here ******************************************************************
 
   // If no intermediate files, dump directly into output file. If not, will do a round of merging
   if(!args.no_write_flag) {

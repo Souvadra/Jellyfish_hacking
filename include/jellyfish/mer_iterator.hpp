@@ -12,6 +12,7 @@
 
 #include <iterator>
 #include <jellyfish/mer_dna.hpp>
+#include <iostream>         // I added this
 
 namespace jellyfish {
 template<typename SequencePool, typename MerType>
@@ -66,18 +67,43 @@ public:
 
       do {
         int code = m_.code(*cseq_++);
+          // std::cout << code << "   code on line 70 in mer_iterator.hpp\n";
+          //std::cout << "I'm inside the do loop on line 71 in mer_iterator.hpp\n";
+
         if(code >= 0) {
+          // std::cout << m_ << "   m_ before shift left on line 74 in mer_iterator.hpp\n";
           m_.shift_left(code);
-          if(canonical_)
+          // std::cout << m_ << "   m_ after shift left on line 76 in mer_iterator.hpp\n";
+          if(canonical_){
+            // std::cout << rcm_ << "   rcm_ before shift right on line 78 in mer_iterator.hpp\n";
             rcm_.shift_right(rcm_.complement(code));
+            // std::cout << rcm_ << "   rcm_ after shift right on line 80 in mer_iterator.hpp\n";
+          }
           filled_ = std::min(filled_ + 1, mer_dna::k());
+          // std::cout << filled_ << "     filled_ on line 82 in mer_iterator.hpp\n";
         } else
           filled_ = 0;
       } while(filled_ < m_.k() && cseq_ < (*job_)->end);
+      // std::cout << filled_ << "     filled_ after exiting the loop line 87 in mer_iterator.hpp\n";
       if(filled_ >= m_.k())
+      {
+        // std::cout << filled_ << "     filled_ in the if condition on line 90 in mer_iterator.hpp\n";
+        // std::cout << m_.k() << "     m_.k() in the if condition on line 91 in mer_iterator.hpp\n";
         break;
+      }
     }
+    // -------  std::cout << m_ << "     final m_ being returned on line 95 in mer_iterator.hpp\n";
+    // -------  std::cout << rcm_ << "     final rcm_ being returned on line 96 in mer_iterator.hpp\n";
+    // mer_type temporary = m_ ;
+    // std::cout << temporary << "     temporary before modifying m on line 98 in mer_iterator.hpp\n";
+    #if 0
+    m_.alter_it();
+    #endif 
+    // std::cout << temporary << "     temporary after modifying m on line 98 in mer_iterator.hpp\n";
+    // std::cout << m_.alter_it() << "     m_.alter_it() on line 97 in mer_iterator.hpp\n";
+    // --------  std::cout << m_ << "     final m_ being returned on line 98 in mer_iterator.hpp\n\n";
     return *this;
+
   }
 
   mer_iterator operator++(int) {

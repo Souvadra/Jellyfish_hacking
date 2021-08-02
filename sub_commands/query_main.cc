@@ -46,8 +46,10 @@ void query_from_sequence(PathIterator file_begin, PathIterator file_end, const D
                          std::ostream& out, bool canonical) {
   jellyfish::stream_manager<PathIterator> streams(file_begin, file_end);
   sequence_parser parser(mer_dna::k(), 1, 3, 4096, streams);
-  for(mer_iterator mers(parser, canonical); mers; ++mers)
+  for(mer_iterator mers(parser, canonical); mers; ++mers) {
+    std::cout << "query_main.cc @line 50" << std::endl; // Souvadra's addition
     out << *mers << " " << db.check(*mers) << "\n";
+  }
 }
 
 template<typename Database>
@@ -103,6 +105,7 @@ int query_main(int argc, char *argv[])
       err::die("Bloom filter file is truncated");
     in.close();
     query_from_sequence(args.sequence_arg.begin(), args.sequence_arg.end(), filter, out, header.canonical());
+    std::cout << "query_main.cc @line 108" << std::endl; // Souvadra's addition
     query_from_cmdline(args.mers_arg, filter, out, header.canonical());
     if(args.interactive_flag)  query_from_stdin(filter, out, header.canonical());
   } else if(header.format() == binary_dumper::format) {
@@ -113,6 +116,7 @@ int query_main(int argc, char *argv[])
     binary_query bq(binary_map.base() + header.offset(), header.key_len(), header.counter_len(), header.matrix(),
                                header.size() - 1, binary_map.length() - header.offset());
     query_from_sequence(args.sequence_arg.begin(), args.sequence_arg.end(), bq, out, header.canonical());
+    std::cout << "query_main.cc @line 119" << std::endl; // Souvadra's addition
     query_from_cmdline(args.mers_arg, bq, out, header.canonical());
     if(args.interactive_flag)  query_from_stdin(bq, out, header.canonical());
   } else {
