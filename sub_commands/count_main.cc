@@ -20,7 +20,7 @@
 #include <signal.h>
 #include <stdlib.h> // Souvadra's addition
 #include <stdint.h> // Souvadra's addition
-#include "kvec.h"   // Souvadra's addition // don't need it actually, remove kvec.h later
+// #include "kvec.h"   // Souvadra's addition // don't need it actually, remove kvec.h later
 
 #include <cctype>
 #include <iostream>
@@ -134,38 +134,24 @@ struct filter_bf : public filter {
 };
 
 // ****************************** Souvadra's addition starts ************************* //
-#define R -1
-#define I -2
-#define O -3
-#define A 0
-#define C 1
-#define G 2
-#define T 3
 unsigned char seq_nt4_table[256] = {
-  O, O, O, O, O, O, O, O, O, O, I, O, O, O, O, O,
-  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
-  O, O, O, O, O, O, O, O, O, O, O, O, O, R, O, O,
-  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
-  O, A, R, C, R, O, O, G, R, O, O, R, O, R, R, O,
-  O, O, R, R, T, O, R, R, R, R, O, O, O, O, O, O,
-  O, A, R, C, R, O, O, G, R, O, O, R, O, R, R, O,
-  O, O, R, R, T, O, R, R, R, R, O, O, O, O, O, O,
-  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
-  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
-  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
-  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
-  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
-  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
-  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
-  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O
+	0, 1, 2, 3,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 0, 4, 1,  4, 4, 4, 2,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 4, 4, 4,  3, 3, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 0, 4, 1,  4, 4, 4, 2,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 4, 4, 4,  3, 3, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4
 };
-#undef R
-#undef I
-#undef O
-#undef A
-#undef C
-#undef G
-#undef T
 
 typedef struct { uint64_t x, y; } mm128_t;
 typedef struct { size_t n, m; mm128_t *a; } mm128_v;
@@ -187,7 +173,7 @@ typedef struct { // a simplified version of kdq
 	int a[32];
 } tiny_queue_t;
 
-tatic inline void tq_push(tiny_queue_t *q, int x)
+static inline void tq_push(tiny_queue_t *q, int x)
 {
 	q->a[((q->count++) + q->front) & 0x1f] = x;
 }
@@ -202,6 +188,7 @@ static inline int tq_shift(tiny_queue_t *q)
 	return x;
 }
 
+#if 0
 // --------------------------------------------------
 // A simple function won't work, need to make it a class object and then 
 // apply my copying majic ...
@@ -265,6 +252,27 @@ bool is_minimizer(std::string mers) {
   if (min.x != UINT64_MAX)
 		kv_push(mm128_t, km, *p, min);
 }
+#endif
+
+#define star_mers_type jellyfish::mer_dna_ns::mer_base_static<long unsigned int, 0>
+class minimizer_factory {
+private:
+std::vector<star_mers_type> mer_list;
+int k, w;
+uint64_t shift1, mask;
+uint64_t kmer[2] = {0,0};
+public:
+  minimizer_factory(int k, int w) {
+    this->k = k;
+    this->w = w;
+    this->shift1 = 2 * (k - 1);
+    this->mask = (1ULL<<2*k) - 1;
+  }
+  star_mers_type select_minimizer(star_mers_type mer) {
+  return mer;
+  } 
+};
+
 // ****************************** Souvadra's addition ends ************************* //
 
 
@@ -298,11 +306,15 @@ public:
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
           std::string mer_str = mers->to_str();
-          bool selected = is_minimizer(mer_str);
+          minimizer_factory mmf(6, 1);
+          auto selected = mmf.select_minimizer(*mers);
+          //std::cout << typeid(*mers).name() << "  " << typeid(selected).name() << std::endl;
           //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {
-          if (selected) {
-            std::cout << mer_str << " is being added to hash" << std::endl;
-            ary_.add(*mers, 1);
+          if (true) {
+            std::cout << "count = " << count << ", " <<  *mers << " is being added to hash" << std::endl;
+            std::string ANSWER = selected.to_str();
+            std::cout << ANSWER << std::endl; // souvadra's addition
+            ary_.add(selected, 1);
           }
         }
         ++count;
@@ -447,7 +459,7 @@ int count_main(int argc, char *argv[])
   
   // Counting is starting here ************************************************************************
   auto after_init_time = system_clock::now();
-
+  
   OPERATION do_op = COUNT;
   if(args.if_given) {
     stream_manager_type streams(args.Files_arg);
