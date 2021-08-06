@@ -724,6 +724,7 @@ inline std::istream& operator>>(std::istream& is, mer_base<derived>& mer) {
   }
 
   char buffer[mer.k() + 1];
+  std::cout << "mer_dna.hpp @line 727" << std::endl;
   is.read(buffer, mer.k());
   if(is.gcount() != mer.k())
     goto error;

@@ -158,6 +158,7 @@ public:
      case COUNT:
       std::cout << "Counting Happening" << std::endl; // Souvadra's addition
       #if 0
+      std::cout << "line 161 being executed" << std::endl; // Souvadra's addition
       std::cout << "k-emr size:" << mers->k() << std::endl; // Souvadra's addition
       //int w = mers->k();
       for (; mers; ++mers) {
@@ -177,8 +178,9 @@ public:
       std::cout << "k-mer size: " << mers->k() << std::endl; // Souvadra's addition
       for( ; mers; ++mers) {
         if((*filter_)(*mers)) {
-          //std::cout << *mers << "<-- Souvadra printed out: *mers @count_main.cc @171"<< std::endl;
-          ary_.add(*mers, 1);
+          std::string mer_str = mers->to_str();
+          std::cout << mer_str << " Sequence string of *mers object" << std::endl; // Souvadra's addition
+          ary_.add(*mers, 1); 
         }
         ++count;
         //std::cout << "count: " << count << std::endl; // Souvadra's addition
