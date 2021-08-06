@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <signal.h>
 #include <stdlib.h> // Souvadra's addition
+#include <stdint.h> // Souvadra's addition
 
 #include <cctype>
 #include <iostream>
@@ -131,6 +132,60 @@ struct filter_bf : public filter {
   }
 };
 
+// ****************************** Souvadra's addition starts ************************* //
+static inline uint64_t hash64(uint64_t key, uint64_t mask)
+{
+	key = (~key + (key << 21)) & mask; // key = (key << 21) - key - 1;
+	key = key ^ key >> 24;
+	key = ((key + (key << 3)) + (key << 8)) & mask; // key * 265
+	key = key ^ key >> 14;
+	key = ((key + (key << 2)) + (key << 4)) & mask; // key * 21
+	key = key ^ key >> 28;
+	key = (key + (key << 31)) & mask;
+	return key;
+}
+
+typedef struct { // a simplified version of kdq
+	int front, count;
+	int a[32];
+} tiny_queue_t;
+
+tatic inline void tq_push(tiny_queue_t *q, int x)
+{
+	q->a[((q->count++) + q->front) & 0x1f] = x;
+}
+
+static inline int tq_shift(tiny_queue_t *q)
+{
+	int x;
+	if (q->count == 0) return -1;
+	x = q->a[q->front++];
+	q->front &= 0x1f;
+	--q->count;
+	return x;
+}
+
+// --------------------------------------------------
+bool is_minimizer(std::string mers) {
+  // Currently hardcoding some variables, will put them as parameter later
+  int k = 6;
+  int len = 1; // need to know the length of the total DNA_seq and update it accordingly
+  int w = 1; // w = 1 ==> select all k-mers
+  // -------------
+
+  uint64_t shift1 = 2 * (k - 1), mask = (1ULL<<2*k) - 1, kmer[2] = {0,0};
+  int i, j, l, buf_pos, min_pos, kmer_span = 0;
+	mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
+	tiny_queue_t tq;
+
+  assert(len > 0 && (w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
+	memset(buf, 0xff, w * 16);
+	memset(&tq, 0, sizeof(tiny_queue_t));
+	kv_resize(mm128_t, km, *p, p->n + len/w);
+}
+// ****************************** Souvadra's addition ends ************************* //
+
+
 enum OPERATION { COUNT, PRIME, UPDATE };
 template<typename MerIteratorType, typename ParserType>
 class mer_counter_base : public jellyfish::thread_exec {
@@ -149,7 +204,7 @@ public:
   {
     ary_.reset_done();
   }
-
+  
   virtual void start(int thid) {
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
@@ -157,33 +212,30 @@ public:
     switch(op_) {
      case COUNT:
       std::cout << "Counting Happening" << std::endl; // Souvadra's addition
-      #if 0
-      std::cout << "line 161 being executed" << std::endl; // Souvadra's addition
-      std::cout << "k-emr size:" << mers->k() << std::endl; // Souvadra's addition
-      //int w = mers->k();
+      #if 1
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
-          if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {
-            // std::cout << *mers << "is being added to hash" << std::endl;
+          std::string mer_str = mers->to_str();
+          bool selected = is_minimizer(mer_str);
+          //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {
+          if (selected) {
+            std::cout << mer_str << " is being added to hash" << std::endl;
             ary_.add(*mers, 1);
-          } //else {
-            // std::cout << *mers << "is NOT being added to hash" << std::endl;
-          //}
+          }
         }
         ++count;
       }
       #endif 
-      #if 1
-      std::cout << "Ola Amigo !!" << std::endl; // Souvadra's addition 
+      #if 0
       std::cout << "k-mer size: " << mers->k() << std::endl; // Souvadra's addition
       for( ; mers; ++mers) {
         if((*filter_)(*mers)) {
           std::string mer_str = mers->to_str();
           std::cout << mer_str << " Sequence string of *mers object" << std::endl; // Souvadra's addition
+          std::cout << count << " Count value" << std::endl; // Souvadra's addition
           ary_.add(*mers, 1); 
         }
         ++count;
-        //std::cout << "count: " << count << std::endl; // Souvadra's addition
       }
       #endif
       break;
@@ -318,12 +370,10 @@ int count_main(int argc, char *argv[])
   if(args.if_given) {
     stream_manager_type streams(args.Files_arg);
     streams.paths(args.if_arg.begin(), args.if_arg.end());
-    std::cout << "count_main.cc @line 292" << std::endl; // Souvadra's addition
     mer_counter counter(args.threads_arg, ary, streams, PRIME);
     counter.exec_join(args.threads_arg);
     do_op = UPDATE;
   }
-  std::cout << "count_main.cc @line 299" << std::endl;
   // Iterators to the multi pipe paths. If no generator manager,
   // generate an empty range.
   auto pipes_begin = generator_manager.get() ? generator_manager->pipes().begin() : args.file_arg.end();
