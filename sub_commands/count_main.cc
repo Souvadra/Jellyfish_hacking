@@ -20,6 +20,7 @@
 #include <signal.h>
 #include <stdlib.h> // Souvadra's addition
 #include <stdint.h> // Souvadra's addition
+#include "kvec.h"   // Souvadra's addition // don't need it actually, remove kvec.h later
 
 #include <cctype>
 #include <iostream>
@@ -133,6 +134,42 @@ struct filter_bf : public filter {
 };
 
 // ****************************** Souvadra's addition starts ************************* //
+#define R -1
+#define I -2
+#define O -3
+#define A 0
+#define C 1
+#define G 2
+#define T 3
+unsigned char seq_nt4_table[256] = {
+  O, O, O, O, O, O, O, O, O, O, I, O, O, O, O, O,
+  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
+  O, O, O, O, O, O, O, O, O, O, O, O, O, R, O, O,
+  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
+  O, A, R, C, R, O, O, G, R, O, O, R, O, R, R, O,
+  O, O, R, R, T, O, R, R, R, R, O, O, O, O, O, O,
+  O, A, R, C, R, O, O, G, R, O, O, R, O, R, R, O,
+  O, O, R, R, T, O, R, R, R, R, O, O, O, O, O, O,
+  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
+  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
+  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
+  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
+  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
+  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
+  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O,
+  O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O
+};
+#undef R
+#undef I
+#undef O
+#undef A
+#undef C
+#undef G
+#undef T
+
+typedef struct { uint64_t x, y; } mm128_t;
+typedef struct { size_t n, m; mm128_t *a; } mm128_v;
+
 static inline uint64_t hash64(uint64_t key, uint64_t mask)
 {
 	key = (~key + (key << 21)) & mask; // key = (key << 21) - key - 1;
@@ -166,6 +203,8 @@ static inline int tq_shift(tiny_queue_t *q)
 }
 
 // --------------------------------------------------
+// A simple function won't work, need to make it a class object and then 
+// apply my copying majic ...
 bool is_minimizer(std::string mers) {
   // Currently hardcoding some variables, will put them as parameter later
   int k = 6;
@@ -181,7 +220,50 @@ bool is_minimizer(std::string mers) {
   assert(len > 0 && (w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
 	memset(buf, 0xff, w * 16);
 	memset(&tq, 0, sizeof(tiny_queue_t));
-	kv_resize(mm128_t, km, *p, p->n + len/w);
+	
+  for (i = l = buf_pos = min_pos = 0; i < len; ++i) {
+    int c = seq_nt4_table[(uint8_t)str[i]]; // NEED TO CHANGE THIS LINE
+    mm128_t info = { UINT64_MAX, UINT64_MAX };
+    if (c >= 0) { // if c belongs to A,T,G,C
+      int z;
+      kmer_span = l + 1 < k? l + 1 : k;
+      kmer[0] = (kmer[0] << 2 | c) & mask;           // forward k-mer
+			kmer[1] = (kmer[1] >> 2) | (3ULL^c) << shift1; // reverse k-mer
+      if (kmer[0] == kmer[1]) continue; // skip "symmetric k-mers" as we don't know it strand
+			z = kmer[0] < kmer[1]? 0 : 1; // strand
+			++l;
+			if (l >= k && kmer_span < 256) {
+				info.x = hash64(kmer[z], mask) << 8 | kmer_span;
+				info.y = (uint64_t)rid<<32 | (uint32_t)i<<1 | z;
+			}
+    } else l = 0, tq.count = tq.front = 0, kmer_span = 0;
+    buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
+		if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window - because identical k-mers are not stored yet
+			for (j = buf_pos + 1; j < w; ++j)
+				if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
+			for (j = 0; j < buf_pos; ++j)
+				if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
+		}
+    if (info.x <= min.x) { // a new minimum; then write the old min
+			if (l >= w + k && min.x != UINT64_MAX) kv_push(mm128_t, km, *p, min);
+			min = info, min_pos = buf_pos;
+		} else if (buf_pos == min_pos) { // old min has moved outside the window
+			if (l >= w + k - 1 && min.x != UINT64_MAX) kv_push(mm128_t, km, *p, min);
+			for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
+				if (min.x >= buf[j].x) min = buf[j], min_pos = j; // >= is important s.t. min is always the closest k-mer
+			for (j = 0; j <= buf_pos; ++j)
+				if (min.x >= buf[j].x) min = buf[j], min_pos = j;
+			if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
+				for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
+					if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
+				for (j = 0; j <= buf_pos; ++j)
+					if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
+			}
+		}
+    if (++buf_pos == w) buf_pos = 0;
+  }
+  if (min.x != UINT64_MAX)
+		kv_push(mm128_t, km, *p, min);
 }
 // ****************************** Souvadra's addition ends ************************* //
 
