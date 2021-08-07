@@ -213,33 +213,34 @@ public:
     // Just for testing purpose
     std::cout << "shift1: " << this->shift1 << ", mask: " << this->mask << std::endl; // remove this line later
   }
+  #if 1
   star_mers_type select_minimizer(star_mers_type mer) {
-    if (this->mer_list.empty()) { // very first k-mer being pushed
-      this->l += this->k;
+    if (mer_list.empty()) { // very first k-mer being pushed
+      l += k;
       // do something 
     } else {
-      this->mer_list.push_back(mer);
+      mer_list.push_back(mer);
       int c = seq_nt4_table[(uint8_t)str[i]];
       mm128_t info = { UINT64_MAX, UINT64_MAX };
       if (c < 4) { // not an ambiguous base
         int z;
-        this->kmer_span = this->l + 1 < this->k? this->l + 1 : this->k;
-        this->kmer[0] = (this->kmer[0] << 2 | c) & this->mask;           // forward k-mer
-        this->kmer[1] = (this->kmer[1] >> 2) | (3ULL^c) << this->shift1; // reverse k-mer
+        kmer_span = l + 1 < k? l + 1 : k;
+        kmer[0] = (kmer[0] << 2 | c) & mask;           // forward k-mer
+        kmer[1] = (kmer[1] >> 2) | (3ULL^c) << shift1; // reverse k-mer
         
-        if (this->kmer[0] == this->kmer[1]) continue; // skip "symmetric k-mers" as we don't know it strand
-        z = this->kmer[0] < this->kmer[1]? 0 : 1; // strand
-        ++this->l;
-        if (this->l >= this->k && this->kmer_span < 256) {
-          info.x = hash64(this->kmer[z], this->mask) << 8 | this->kmer_span;
+        if (kmer[0] == kmer[1]) continue; // skip "symmetric k-mers" as we don't know it strand
+        z = kmer[0] < kmer[1]? 0 : 1; // strand
+        ++l;
+        if (l >= k && kmer_span < 256) {
+          info.x = hash64(kmer[z], mask) << 8 | kmer_span;
 				  info.y = (uint64_t)rid<<32 | (uint32_t)i<<1 | z;
         }
       } else {
         std::count << "HEEYYYYYY!!!!        AMBIGUOUS BASE FOUND          DO SOMETHING \n" << std::endl;
-        this->l = 0, this->tq.count = this->tq.front = 0; this->kmer_span = 0;
+        l = 0, tq.count = tq.front = 0; kmer_span = 0;
       }
       buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
-      if (l == w+k-1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
+      if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
         for (j = buf_pos + 1; j < w; ++j)
           if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
         for (j = 0; j < buf_pos; ++j)
@@ -250,13 +251,31 @@ public:
           kv_push(mm128_t, km, *p, min); // gotta replace this stuff by something appropriate
         } 
         min = info, min_pos = buf_pos;
+      } else if (buf_pos == min_pos) { // old min has moved outside the window
+        if (l >= w + k - 1 && min.x != UINT64_MAX) kv_push(mm128_t, km, *p, min);
+        for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
+          if (min.x >= buf[j].x) min = buf[j], min_pos = j; //  >= is important s.t. min is always the closest k-mer
+        for (j = 0; j <= buf_pos; ++j)
+          if (min.x >= buf[j].x) min = buf[j], min_pos = j;
+        if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
+          for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
+            if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
+          for (j = 0; j <= buf_pos; ++j)
+            if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
+			  } 
       }
+      if (++buf_pos == w) buf_pos = 0;
     }
-  }
-    
-    
+    if (min.x != UINT64_MAX) kv_push(mm128_t, km, *p, min);
+    return mer; // remove this line later
+  }    
+  #endif
+  star_mers_type trial_minimizer(star_mers_type mer) {
+    std::cout << l << " " << k << " " << buf << " " << mask << " " << kmer_span << std::endl;
+    std::cout << this->l << " " << this->k << " " << this->buf << " " << " " << this->mask << " " << this->kmer_span << " " << std::endl;
+    std::cout << "one line done !!" << std::endl;
     return mer;
-  } 
+  }  
 };
 
 // ****************************** Souvadra's addition ends ************************* //
@@ -292,7 +311,7 @@ public:
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
           std::string mer_str = mers->to_str();
-          auto selected = mmf.select_minimizer(*mers);
+          auto selected = mmf.trial_minimizer(*mers);
           //std::cout << typeid(*mers).name() << "  " << typeid(selected).name() << std::endl;
           //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {
           if (true) {
