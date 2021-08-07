@@ -191,7 +191,6 @@ static inline int tq_shift(tiny_queue_t *q)
 #define star_mers_type jellyfish::mer_dna_ns::mer_base_static<long unsigned int, 0>
 class minimizer_factory {
 private:
-std::vector<star_mers_type> mer_list; // this is my invention --> Hence, not sure will work or not XD
 int k, w;
 uint64_t shift1, mask;
 uint64_t kmer[2] = {0,0};
@@ -199,6 +198,8 @@ int j, l, buf_pos, min_pos = 0;
 int kmer_span;
 tiny_queue_t tq;
 mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
+std::vector<star_mers_type> buf_mer; //Souvadra's invention
+star_mers_type min_mer; // Souvadra's invention
 public:
   minimizer_factory(int k, int w) {
     assert((w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
@@ -212,16 +213,17 @@ public:
 
     // Just for testing purpose
     std::cout << "shift1: " << this->shift1 << ", mask: " << this->mask << std::endl; // remove this line later
+    std::cout << typeid(buf[0]).name() << "   " << typeid(min).name() << std::endl;
   }
-  #if 1
+  #if 0
   star_mers_type select_minimizer(star_mers_type mer) {
-    if (mer_list.empty()) { // very first k-mer being pushed
+    if (buf_mer.empty()) { // very first k-mer being pushed
       l += k;
       // do something 
     } else {
-      mer_list.push_back(mer);
       int c = seq_nt4_table[(uint8_t)str[i]];
       mm128_t info = { UINT64_MAX, UINT64_MAX };
+      star_mers_type info_mer = mer; // Souvadra's addition
       if (c < 4) { // not an ambiguous base
         int z;
         kmer_span = l + 1 < k? l + 1 : k;
@@ -237,9 +239,10 @@ public:
         }
       } else {
         std::count << "HEEYYYYYY!!!!        AMBIGUOUS BASE FOUND          DO SOMETHING \n" << std::endl;
-        l = 0, tq.count = tq.front = 0; kmer_span = 0;
+        l = 0, tq.count = tq.front = 0; kmer_span = 0; // THE CODE SHOULD NEVER COME HERE, NEVER !!
       }
       buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
+      buf_mer.push_back(info_mer); // Souvadra's addition
       if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
         for (j = buf_pos + 1; j < w; ++j)
           if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
@@ -271,9 +274,9 @@ public:
   }    
   #endif
   star_mers_type trial_minimizer(star_mers_type mer) {
-    std::cout << l << " " << k << " " << buf << " " << mask << " " << kmer_span << std::endl;
-    std::cout << this->l << " " << this->k << " " << this->buf << " " << " " << this->mask << " " << this->kmer_span << " " << std::endl;
-    std::cout << "one line done !!" << std::endl;
+    //std::cout << l << " " << k << " " << buf << " " << mask << " " << kmer_span << std::endl;
+    //std::cout << this->l << " " << this->k << " " << this->buf << " " << " " << this->mask << " " << this->kmer_span << " " << std::endl;
+    //std::cout << "one line done !!" << std::endl;
     return mer;
   }  
 };
