@@ -188,88 +188,74 @@ static inline int tq_shift(tiny_queue_t *q)
 	return x;
 }
 
-#if 0
-// --------------------------------------------------
-// A simple function won't work, need to make it a class object and then 
-// apply my copying majic ...
-bool is_minimizer(std::string mers) {
-  // Currently hardcoding some variables, will put them as parameter later
-  int k = 6;
-  int len = 1; // need to know the length of the total DNA_seq and update it accordingly
-  int w = 1; // w = 1 ==> select all k-mers
-  // -------------
-
-  uint64_t shift1 = 2 * (k - 1), mask = (1ULL<<2*k) - 1, kmer[2] = {0,0};
-  int i, j, l, buf_pos, min_pos, kmer_span = 0;
-	mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
-	tiny_queue_t tq;
-
-  assert(len > 0 && (w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
-	memset(buf, 0xff, w * 16);
-	memset(&tq, 0, sizeof(tiny_queue_t));
-	
-  for (i = l = buf_pos = min_pos = 0; i < len; ++i) {
-    int c = seq_nt4_table[(uint8_t)str[i]]; // NEED TO CHANGE THIS LINE
-    mm128_t info = { UINT64_MAX, UINT64_MAX };
-    if (c >= 0) { // if c belongs to A,T,G,C
-      int z;
-      kmer_span = l + 1 < k? l + 1 : k;
-      kmer[0] = (kmer[0] << 2 | c) & mask;           // forward k-mer
-			kmer[1] = (kmer[1] >> 2) | (3ULL^c) << shift1; // reverse k-mer
-      if (kmer[0] == kmer[1]) continue; // skip "symmetric k-mers" as we don't know it strand
-			z = kmer[0] < kmer[1]? 0 : 1; // strand
-			++l;
-			if (l >= k && kmer_span < 256) {
-				info.x = hash64(kmer[z], mask) << 8 | kmer_span;
-				info.y = (uint64_t)rid<<32 | (uint32_t)i<<1 | z;
-			}
-    } else l = 0, tq.count = tq.front = 0, kmer_span = 0;
-    buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
-		if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window - because identical k-mers are not stored yet
-			for (j = buf_pos + 1; j < w; ++j)
-				if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
-			for (j = 0; j < buf_pos; ++j)
-				if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
-		}
-    if (info.x <= min.x) { // a new minimum; then write the old min
-			if (l >= w + k && min.x != UINT64_MAX) kv_push(mm128_t, km, *p, min);
-			min = info, min_pos = buf_pos;
-		} else if (buf_pos == min_pos) { // old min has moved outside the window
-			if (l >= w + k - 1 && min.x != UINT64_MAX) kv_push(mm128_t, km, *p, min);
-			for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
-				if (min.x >= buf[j].x) min = buf[j], min_pos = j; // >= is important s.t. min is always the closest k-mer
-			for (j = 0; j <= buf_pos; ++j)
-				if (min.x >= buf[j].x) min = buf[j], min_pos = j;
-			if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
-				for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
-					if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
-				for (j = 0; j <= buf_pos; ++j)
-					if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
-			}
-		}
-    if (++buf_pos == w) buf_pos = 0;
-  }
-  if (min.x != UINT64_MAX)
-		kv_push(mm128_t, km, *p, min);
-}
-#endif
-
 #define star_mers_type jellyfish::mer_dna_ns::mer_base_static<long unsigned int, 0>
 class minimizer_factory {
 private:
-std::vector<star_mers_type> mer_list;
+std::vector<star_mers_type> mer_list; // this is my invention --> Hence, not sure will work or not XD
 int k, w;
 uint64_t shift1, mask;
 uint64_t kmer[2] = {0,0};
+int j, l, buf_pos, min_pos = 0;
+int kmer_span;
+tiny_queue_t tq;
+mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
 public:
   minimizer_factory(int k, int w) {
+    assert((w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
     this->k = k;
     this->w = w;
     this->shift1 = 2 * (k - 1);
     this->mask = (1ULL<<2*k) - 1;
+    this->kmer_span = k; // Do I even need this variable anymore ???
+    memset(buf, 0xff, w * 16);
+    memset(&tq, 0, sizeof(tiny_queue_t));
+
+    // Just for testing purpose
+    std::cout << "shift1: " << this->shift1 << ", mask: " << this->mask << std::endl; // remove this line later
   }
   star_mers_type select_minimizer(star_mers_type mer) {
-  return mer;
+    if (this->mer_list.empty()) { // very first k-mer being pushed
+      this->l += this->k;
+      // do something 
+    } else {
+      this->mer_list.push_back(mer);
+      int c = seq_nt4_table[(uint8_t)str[i]];
+      mm128_t info = { UINT64_MAX, UINT64_MAX };
+      if (c < 4) { // not an ambiguous base
+        int z;
+        this->kmer_span = this->l + 1 < this->k? this->l + 1 : this->k;
+        this->kmer[0] = (this->kmer[0] << 2 | c) & this->mask;           // forward k-mer
+        this->kmer[1] = (this->kmer[1] >> 2) | (3ULL^c) << this->shift1; // reverse k-mer
+        
+        if (this->kmer[0] == this->kmer[1]) continue; // skip "symmetric k-mers" as we don't know it strand
+        z = this->kmer[0] < this->kmer[1]? 0 : 1; // strand
+        ++this->l;
+        if (this->l >= this->k && this->kmer_span < 256) {
+          info.x = hash64(this->kmer[z], this->mask) << 8 | this->kmer_span;
+				  info.y = (uint64_t)rid<<32 | (uint32_t)i<<1 | z;
+        }
+      } else {
+        std::count << "HEEYYYYYY!!!!        AMBIGUOUS BASE FOUND          DO SOMETHING \n" << std::endl;
+        this->l = 0, this->tq.count = this->tq.front = 0; this->kmer_span = 0;
+      }
+      buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
+      if (l == w+k-1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
+        for (j = buf_pos + 1; j < w; ++j)
+          if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
+        for (j = 0; j < buf_pos; ++j)
+          if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
+		  } 
+      if (info.x <= min.x) { // a new minimum; then write the old min
+        if (l >= w + k && min.x != UINT64_MAX) {
+          kv_push(mm128_t, km, *p, min); // gotta replace this stuff by something appropriate
+        } 
+        min = info, min_pos = buf_pos;
+      }
+    }
+  }
+    
+    
+    return mer;
   } 
 };
 
@@ -298,7 +284,7 @@ public:
   virtual void start(int thid) {
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
-
+    minimizer_factory mmf(15, 1); // k and w value hardcoded, NEET TO CHANGE
     switch(op_) {
      case COUNT:
       std::cout << "Counting Happening" << std::endl; // Souvadra's addition
@@ -306,14 +292,13 @@ public:
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
           std::string mer_str = mers->to_str();
-          minimizer_factory mmf(6, 1);
           auto selected = mmf.select_minimizer(*mers);
           //std::cout << typeid(*mers).name() << "  " << typeid(selected).name() << std::endl;
           //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {
           if (true) {
-            std::cout << "count = " << count << ", " <<  *mers << " is being added to hash" << std::endl;
-            std::string ANSWER = selected.to_str();
-            std::cout << ANSWER << std::endl; // souvadra's addition
+            //std::cout << "count = " << count << ", " <<  *mers << " is being added to hash" << std::endl;
+            //std::string ANSWER = selected.to_str();
+            //std::cout << ANSWER << std::endl; // souvadra's addition
             ary_.add(selected, 1);
           }
         }
