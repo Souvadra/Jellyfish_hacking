@@ -193,17 +193,19 @@ static inline int tq_shift(tiny_queue_t *q)
 #define star_mers_type jellyfish::mer_dna_ns::mer_base_static<long unsigned int, 0>
 class minimizer_factory {
 private:
-int k, w;
-uint64_t shift1, mask;
-uint64_t kmer[2] = {0,0};
-int i, j, l, buf_pos, min_pos = 0;
-uint32_t rid = 0; //hardcoded right now, will need to change later
-int kmer_span;
-tiny_queue_t tq;
-mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
-std::vector<star_mers_type> buf_mer; //Souvadra's invention
-star_mers_type min_mer; // Souvadra's invention
+  int k, w;
+  uint64_t shift1, mask;
+  uint64_t kmer[2] = {0,0};
+  int i, j, l, buf_pos, min_pos = 0;
+  uint32_t rid = 0; //hardcoded right now, will need to change later
+  int kmer_span;
+  tiny_queue_t tq;
+  mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
+  std::vector<star_mers_type> buf_mer, return_mer; //Souvadra's invention
+  star_mers_type min_mer; // Souvadra's invention
 public:
+  bool signal; // tells Jellyfish if it should put the returned mer into an object or not
+
   minimizer_factory(int k, int w) {
     assert((w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
     this->k = k;
@@ -226,43 +228,9 @@ public:
   }
 
   #if 1
-
-  void add_kmers(star_mers_type mer) {
-      if (buf_mer.empty()) { // very first k-mer being pushed
-      std::string str = mer.to_str();
-      for (i = l = 0; i < (int)str.length(); ++i) {
-        int c = seq_nt4_table[(uint8_t)str[i]];
-        mm128_t info = { UINT64_MAX, UINT64_MAX };
-        star_mers_type info_mer;
-        if (c < 4) {
-          int z;
-          kmer_span = l + 1 < k? l + 1 : k;
-          kmer[0] = (kmer[0] << 2 | c) & mask;           // forward k-mer
-			    kmer[1] = (kmer[1] >> 2) | (3ULL^c) << shift1; // reverse k-mer
-          z = kmer[0] <= kmer[1]? 0 : 1; //strand
-          ++l;
-          if (l >= k && kmer_span < 256) {
-            info.x = hash64(kmer[z], mask) << 8 | kmer_span;
-            info.y = (uint64_t)rid<<32 | (uint32_t)i<<1 | z;
-            info_mer = mer;
-          }
-        } else l = 0, tq.count = tq.front = 0, kmer_span = 0;
-        buf[buf_pos] = info;
-        buf_mer_add(info_mer, buf_pos); // Souvadra's addition
-        if (info.x <= min.x) { // a new minimum; then write the old min
-          min = info, min_pos = buf_pos, min_mer = info_mer;
-        } else if (buf_pos == min_pos) { // a new minimum; then write the old min
-          for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
-            if (min.x >= buf[j].x) min = buf[j], min_pos = j; // >= is important s.t. min is always the closest k-mer
-          for (j = 0; j <= buf_pos; ++j)
-            if (min.x >= buf[j].x) min = buf[j], min_pos = j;
-        }
-        if (++buf_pos == w) buf_pos = 0;
-      }
-  }
-
   star_mers_type select_minimizer(star_mers_type mer) {
     if (buf_mer.empty()) { // very first k-mer being pushed
+      //std::cout << "line 233 being printed" << std::endl;
       std::string str = mer.to_str();
       for (i = l = 0; i < (int)str.length(); ++i) {
         int c = seq_nt4_table[(uint8_t)str[i]];
@@ -293,6 +261,8 @@ public:
         }
         if (++buf_pos == w) buf_pos = 0;
       }
+      //std::cout << "line 263 being printed" << std::endl;
+      signal = false, return_mer.push_back(mer); // dummy return to just keep the function valid
     } else {
       char str = mer.to_str().back();
       int c = seq_nt4_table[(uint8_t)str];
@@ -319,30 +289,44 @@ public:
       buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
       buf_mer_add(info_mer, buf_pos); // Souvadra's addition
       if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
+        //std::cout << "line 290 being printed" << std::endl;
         for (j = buf_pos + 1; j < w; ++j)
-          if (min.x == buf[j].x && buf[j].y != min.y) return(buf_mer[j]);
+          if (min.x == buf[j].x && buf[j].y != min.y) signal = true, return_mer.push_back(buf_mer[j]);
         for (j = 0; j < buf_pos; ++j)
-          if (min.x == buf[j].x && buf[j].y != min.y) return(buf_mer[j]);
-		  } 
+          if (min.x == buf[j].x && buf[j].y != min.y) signal = true, return_mer.push_back(buf_mer[j]);
+		  }
       if (info.x <= min.x) { // a new minimum; then write the old min
-        if (l >= w + k && min.x != UINT64_MAX) return(min_mer);
+        //std::cout << "line 296 being printed" << std::endl;
+        if (l >= w + k && min.x != UINT64_MAX) signal = true, return_mer.push_back(min_mer);
         min = info, min_pos = buf_pos, min_mer = info_mer;
       } else if (buf_pos == min_pos) { // old min has moved outside the window
-        if (l >= w + k - 1 && min.x != UINT64_MAX) return(min_mer);
+        //std::cout << "line 300 being printed" << std::endl;
+        if (l >= w + k - 1 && min.x != UINT64_MAX) signal = true, return_mer.push_back(min_mer);
         for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
           if (min.x >= buf[j].x) min = buf[j], min_pos = j, min_mer = buf_mer[j]; //  >= is important s.t. min is always the closest k-mer
         for (j = 0; j <= buf_pos; ++j)
           if (min.x >= buf[j].x) min = buf[j], min_pos = j, min_mer = buf_mer[j];
         if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
           for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
-            if (min.x == buf[j].x && min.y != buf[j].y) return(buf_mer[j]);
+            if (min.x == buf[j].x && min.y != buf[j].y) signal = true, return_mer.push_back(buf_mer[j]);
           for (j = 0; j <= buf_pos; ++j)
-            if (min.x == buf[j].x && min.y != buf[j].y) return(buf_mer[j]);
+            if (min.x == buf[j].x && min.y != buf[j].y) signal = true, return_mer.push_back(buf_mer[j]);
 			  } 
       }
       if (++buf_pos == w) buf_pos = 0;
+      if (min.x != UINT64_MAX && return_mer.empty()) {
+        if (l >= w + k - 1) signal = true;
+        else signal = false;
+        //std::cout << "line 315 being printed" << std::endl;
+        return_mer.push_back(min_mer); // not sure about true or false
+      }
     }
-    if (min.x != UINT64_MAX) return(min_mer);
+    //std::cout << "return_mer size: " << return_mer.size() << " | should be equal to 1" << std::endl;
+    auto return_variable = return_mer.back();
+    return_mer.pop_back();
+    //int x;
+    //std::cin >> x;
+    return (return_variable);
   }
   #endif
   star_mers_type trial_minimizer(star_mers_type mer) {
@@ -387,12 +371,14 @@ public:
         if((*filter_)(*mers)) {
           std::string mer_str = mers->to_str();
           auto selected = mmf.select_minimizer(*mers);
+          bool signal = mmf.signal; 
           //std::cout << typeid(*mers).name() << "  " << typeid(selected).name() << std::endl;
           //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {
-          if (true) {
+          //std::cout << signal << std::endl;  // Souvadra's addition
+          if (signal) {
             //std::cout << "count = " << count << ", " <<  *mers << " is being added to hash" << std::endl;
-            //std::string ANSWER = selected.to_str();
-            //std::cout << ANSWER << std::endl; // souvadra's addition
+            std::string ANSWER = selected.to_str();
+            std::cout << ANSWER << std::endl; // souvadra's addition          
             ary_.add(selected, 1);
           }
         }
