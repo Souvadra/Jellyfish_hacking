@@ -173,6 +173,7 @@ typedef struct { // a simplified version of kdq
 	int a[32];
 } tiny_queue_t;
 
+/*
 static inline void tq_push(tiny_queue_t *q, int x)
 {
 	q->a[((q->count++) + q->front) & 0x1f] = x;
@@ -187,6 +188,7 @@ static inline int tq_shift(tiny_queue_t *q)
 	--q->count;
 	return x;
 }
+*/ // My guess is I don't need these two functions, will uncomment if I find myself wrong
 
 #define star_mers_type jellyfish::mer_dna_ns::mer_base_static<long unsigned int, 0>
 class minimizer_factory {
@@ -194,7 +196,8 @@ private:
 int k, w;
 uint64_t shift1, mask;
 uint64_t kmer[2] = {0,0};
-int j, l, buf_pos, min_pos = 0;
+int i, j, l, buf_pos, min_pos = 0;
+uint32_t rid = 0; //hardcoded right now, will need to change later
 int kmer_span;
 tiny_queue_t tq;
 mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
@@ -215,13 +218,14 @@ public:
     std::cout << "shift1: " << this->shift1 << ", mask: " << this->mask << std::endl; // remove this line later
     std::cout << typeid(buf[0]).name() << "   " << typeid(min).name() << std::endl;
   }
-  #if 0
+  #if 1
   star_mers_type select_minimizer(star_mers_type mer) {
     if (buf_mer.empty()) { // very first k-mer being pushed
       l += k;
       // do something 
     } else {
-      int c = seq_nt4_table[(uint8_t)str[i]];
+      char str = mer.to_str().back();
+      int c = seq_nt4_table[(uint8_t)str];
       mm128_t info = { UINT64_MAX, UINT64_MAX };
       star_mers_type info_mer = mer; // Souvadra's addition
       if (c < 4) { // not an ambiguous base
