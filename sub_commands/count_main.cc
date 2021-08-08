@@ -173,23 +173,6 @@ typedef struct { // a simplified version of kdq
 	int a[32];
 } tiny_queue_t;
 
-/*
-static inline void tq_push(tiny_queue_t *q, int x)
-{
-	q->a[((q->count++) + q->front) & 0x1f] = x;
-}
-
-static inline int tq_shift(tiny_queue_t *q)
-{
-	int x;
-	if (q->count == 0) return -1;
-	x = q->a[q->front++];
-	q->front &= 0x1f;
-	--q->count;
-	return x;
-}
-*/ // My guess is I don't need these two functions, will uncomment if I find myself wrong
-
 #define star_mers_type jellyfish::mer_dna_ns::mer_base_static<long unsigned int, 0>
 class minimizer_factory {
 private:
