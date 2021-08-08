@@ -208,74 +208,142 @@ public:
     assert((w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
     this->k = k;
     this->w = w;
-    this->shift1 = 2 * (k - 1);
-    this->mask = (1ULL<<2*k) - 1;
-    this->kmer_span = k; // Do I even need this variable anymore ???
+    shift1 = 2 * (k - 1);
+    mask = (1ULL<<2*k) - 1;
+    kmer_span = k; // Do I even need this variable anymore ???
     memset(buf, 0xff, w * 16);
     memset(&tq, 0, sizeof(tiny_queue_t));
-
-    // Just for testing purpose
-    std::cout << "shift1: " << this->shift1 << ", mask: " << this->mask << std::endl; // remove this line later
-    std::cout << typeid(buf[0]).name() << "   " << typeid(min).name() << std::endl;
   }
+
+  void buf_mer_add(star_mers_type mer, int buf_pos) {
+    // a custom function that makes sure the size of the buf_mer_vector always remains
+    // equal to this->w.
+    if ((int)buf_mer.size() < this->w) { // Need to check if this typecast is working properly // Souvadra
+      buf_mer.push_back(mer);
+    } else {
+      buf_mer[buf_pos] = mer;
+    }
+  }
+
   #if 1
+
+  void add_kmers(star_mers_type mer) {
+      if (buf_mer.empty()) { // very first k-mer being pushed
+      std::string str = mer.to_str();
+      for (i = l = 0; i < (int)str.length(); ++i) {
+        int c = seq_nt4_table[(uint8_t)str[i]];
+        mm128_t info = { UINT64_MAX, UINT64_MAX };
+        star_mers_type info_mer;
+        if (c < 4) {
+          int z;
+          kmer_span = l + 1 < k? l + 1 : k;
+          kmer[0] = (kmer[0] << 2 | c) & mask;           // forward k-mer
+			    kmer[1] = (kmer[1] >> 2) | (3ULL^c) << shift1; // reverse k-mer
+          z = kmer[0] <= kmer[1]? 0 : 1; //strand
+          ++l;
+          if (l >= k && kmer_span < 256) {
+            info.x = hash64(kmer[z], mask) << 8 | kmer_span;
+            info.y = (uint64_t)rid<<32 | (uint32_t)i<<1 | z;
+            info_mer = mer;
+          }
+        } else l = 0, tq.count = tq.front = 0, kmer_span = 0;
+        buf[buf_pos] = info;
+        buf_mer_add(info_mer, buf_pos); // Souvadra's addition
+        if (info.x <= min.x) { // a new minimum; then write the old min
+          min = info, min_pos = buf_pos, min_mer = info_mer;
+        } else if (buf_pos == min_pos) { // a new minimum; then write the old min
+          for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
+            if (min.x >= buf[j].x) min = buf[j], min_pos = j; // >= is important s.t. min is always the closest k-mer
+          for (j = 0; j <= buf_pos; ++j)
+            if (min.x >= buf[j].x) min = buf[j], min_pos = j;
+        }
+        if (++buf_pos == w) buf_pos = 0;
+      }
+  }
+
   star_mers_type select_minimizer(star_mers_type mer) {
     if (buf_mer.empty()) { // very first k-mer being pushed
-      l += k;
-      // do something 
+      std::string str = mer.to_str();
+      for (i = l = 0; i < (int)str.length(); ++i) {
+        int c = seq_nt4_table[(uint8_t)str[i]];
+        mm128_t info = { UINT64_MAX, UINT64_MAX };
+        star_mers_type info_mer;
+        if (c < 4) {
+          int z;
+          kmer_span = l + 1 < k? l + 1 : k;
+          kmer[0] = (kmer[0] << 2 | c) & mask;           // forward k-mer
+			    kmer[1] = (kmer[1] >> 2) | (3ULL^c) << shift1; // reverse k-mer
+          z = kmer[0] <= kmer[1]? 0 : 1; //strand
+          ++l;
+          if (l >= k && kmer_span < 256) {
+            info.x = hash64(kmer[z], mask) << 8 | kmer_span;
+            info.y = (uint64_t)rid<<32 | (uint32_t)i<<1 | z;
+            info_mer = mer;
+          }
+        } else l = 0, tq.count = tq.front = 0, kmer_span = 0;
+        buf[buf_pos] = info;
+        buf_mer_add(info_mer, buf_pos); // Souvadra's addition
+        if (info.x <= min.x) { // a new minimum; then write the old min
+          min = info, min_pos = buf_pos, min_mer = info_mer;
+        } else if (buf_pos == min_pos) { // a new minimum; then write the old min
+          for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
+            if (min.x >= buf[j].x) min = buf[j], min_pos = j; // >= is important s.t. min is always the closest k-mer
+          for (j = 0; j <= buf_pos; ++j)
+            if (min.x >= buf[j].x) min = buf[j], min_pos = j;
+        }
+        if (++buf_pos == w) buf_pos = 0;
+      }
     } else {
       char str = mer.to_str().back();
       int c = seq_nt4_table[(uint8_t)str];
       mm128_t info = { UINT64_MAX, UINT64_MAX };
-      star_mers_type info_mer = mer; // Souvadra's addition
+      star_mers_type info_mer; // Souvadra's addition
       if (c < 4) { // not an ambiguous base
         int z;
         kmer_span = l + 1 < k? l + 1 : k;
         kmer[0] = (kmer[0] << 2 | c) & mask;           // forward k-mer
         kmer[1] = (kmer[1] >> 2) | (3ULL^c) << shift1; // reverse k-mer
         
-        if (kmer[0] == kmer[1]) continue; // skip "symmetric k-mers" as we don't know it strand
-        z = kmer[0] < kmer[1]? 0 : 1; // strand
+        z = kmer[0] <= kmer[1]? 0 : 1; // strand // Souvadra: convert the < to <= to skip dealing 
+        //          with the situation where both the forward and the reverse k-mers are the same
         ++l;
         if (l >= k && kmer_span < 256) {
           info.x = hash64(kmer[z], mask) << 8 | kmer_span;
 				  info.y = (uint64_t)rid<<32 | (uint32_t)i<<1 | z;
+          info_mer = mer; // Souvadra's addition
         }
       } else {
-        std::count << "HEEYYYYYY!!!!        AMBIGUOUS BASE FOUND          DO SOMETHING \n" << std::endl;
+        std::cout << "HEEYYYYYY!!!!        AMBIGUOUS BASE FOUND          DO SOMETHING \n" << std::endl;
         l = 0, tq.count = tq.front = 0; kmer_span = 0; // THE CODE SHOULD NEVER COME HERE, NEVER !!
       }
       buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
-      buf_mer.push_back(info_mer); // Souvadra's addition
+      buf_mer_add(info_mer, buf_pos); // Souvadra's addition
       if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
         for (j = buf_pos + 1; j < w; ++j)
-          if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
+          if (min.x == buf[j].x && buf[j].y != min.y) return(buf_mer[j]);
         for (j = 0; j < buf_pos; ++j)
-          if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
+          if (min.x == buf[j].x && buf[j].y != min.y) return(buf_mer[j]);
 		  } 
       if (info.x <= min.x) { // a new minimum; then write the old min
-        if (l >= w + k && min.x != UINT64_MAX) {
-          kv_push(mm128_t, km, *p, min); // gotta replace this stuff by something appropriate
-        } 
-        min = info, min_pos = buf_pos;
+        if (l >= w + k && min.x != UINT64_MAX) return(min_mer);
+        min = info, min_pos = buf_pos, min_mer = info_mer;
       } else if (buf_pos == min_pos) { // old min has moved outside the window
-        if (l >= w + k - 1 && min.x != UINT64_MAX) kv_push(mm128_t, km, *p, min);
+        if (l >= w + k - 1 && min.x != UINT64_MAX) return(min_mer);
         for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
-          if (min.x >= buf[j].x) min = buf[j], min_pos = j; //  >= is important s.t. min is always the closest k-mer
+          if (min.x >= buf[j].x) min = buf[j], min_pos = j, min_mer = buf_mer[j]; //  >= is important s.t. min is always the closest k-mer
         for (j = 0; j <= buf_pos; ++j)
-          if (min.x >= buf[j].x) min = buf[j], min_pos = j;
+          if (min.x >= buf[j].x) min = buf[j], min_pos = j, min_mer = buf_mer[j];
         if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
           for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
-            if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
+            if (min.x == buf[j].x && min.y != buf[j].y) return(buf_mer[j]);
           for (j = 0; j <= buf_pos; ++j)
-            if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
+            if (min.x == buf[j].x && min.y != buf[j].y) return(buf_mer[j]);
 			  } 
       }
       if (++buf_pos == w) buf_pos = 0;
     }
-    if (min.x != UINT64_MAX) kv_push(mm128_t, km, *p, min);
-    return mer; // remove this line later
-  }    
+    if (min.x != UINT64_MAX) return(min_mer);
+  }
   #endif
   star_mers_type trial_minimizer(star_mers_type mer) {
     //std::cout << l << " " << k << " " << buf << " " << mask << " " << kmer_span << std::endl;
@@ -318,7 +386,7 @@ public:
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
           std::string mer_str = mers->to_str();
-          auto selected = mmf.trial_minimizer(*mers);
+          auto selected = mmf.select_minimizer(*mers);
           //std::cout << typeid(*mers).name() << "  " << typeid(selected).name() << std::endl;
           //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {
           if (true) {
