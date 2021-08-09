@@ -156,8 +156,7 @@ unsigned char seq_nt4_table[256] = {
 typedef struct { uint64_t x, y; } mm128_t;
 typedef struct { size_t n, m; mm128_t *a; } mm128_v;
 
-static inline uint64_t hash64(uint64_t key, uint64_t mask)
-{
+static inline uint64_t hash64(uint64_t key, uint64_t mask) {
 	key = (~key + (key << 21)) & mask; // key = (key << 21) - key - 1;
 	key = key ^ key >> 24;
 	key = ((key + (key << 3)) + (key << 8)) & mask; // key * 265
@@ -212,8 +211,9 @@ public:
 
   #if 1
   star_mers_type select_minimizer(star_mers_type mer) {
+    //std::cout << "l = " << l << std::endl;
     if (buf_mer.empty()) { // very first k-mer being pushed
-      //std::cout << "line 233 being printed" << std::endl;
+      //std::cout << "line 215 being printed" << std::endl;
       std::string str = mer.to_str();
       for (i = l = 0; i < (int)str.length(); ++i) {
         int c = seq_nt4_table[(uint8_t)str[i]];
@@ -244,9 +244,12 @@ public:
         }
         if (++buf_pos == w) buf_pos = 0;
       }
-      //std::cout << "line 263 being printed" << std::endl;
-      signal = false, return_mer.push_back(mer); // dummy return to just keep the function valid
+      //std::cout << "line 246 being printed" << std::endl;
+      //signal = w == 1? true : false;
+      signal = false;
+      return_mer.push_back(mer); // dummy return to just keep the function valid
     } else {
+      //std::cout << "line 250 being printed" << std::endl;
       char str = mer.to_str().back();
       int c = seq_nt4_table[(uint8_t)str];
       mm128_t info = { UINT64_MAX, UINT64_MAX };
@@ -272,19 +275,17 @@ public:
       buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
       buf_mer_add(info_mer, buf_pos); // Souvadra's addition
       if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
-        //std::cout << "line 290 being printed" << std::endl;
+        //std::cout << "line 275 being printed" << std::endl;
         for (j = buf_pos + 1; j < w; ++j)
           if (min.x == buf[j].x && buf[j].y != min.y) signal = true, return_mer.push_back(buf_mer[j]);
         for (j = 0; j < buf_pos; ++j)
           if (min.x == buf[j].x && buf[j].y != min.y) signal = true, return_mer.push_back(buf_mer[j]);
 		  }
       if (info.x <= min.x) { // a new minimum; then write the old min
-        //std::cout << "line 296 being printed" << std::endl;
-        if (l >= w + k && min.x != UINT64_MAX) signal = true, return_mer.push_back(min_mer);
+        if (l >= w + k && min.x != UINT64_MAX) signal = true, return_mer.push_back(min_mer); // std::cout << "line 282 being printed" << std::endl;
         min = info, min_pos = buf_pos, min_mer = info_mer;
       } else if (buf_pos == min_pos) { // old min has moved outside the window
-        //std::cout << "line 300 being printed" << std::endl;
-        if (l >= w + k - 1 && min.x != UINT64_MAX) signal = true, return_mer.push_back(min_mer);
+        if (l >= w + k - 1 && min.x != UINT64_MAX) signal = true, return_mer.push_back(min_mer); // std::cout << "line 285 being printed" << std::endl;
         for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
           if (min.x >= buf[j].x) min = buf[j], min_pos = j, min_mer = buf_mer[j]; //  >= is important s.t. min is always the closest k-mer
         for (j = 0; j <= buf_pos; ++j)
@@ -300,17 +301,23 @@ public:
       if (min.x != UINT64_MAX && return_mer.empty()) {
         if (l >= w + k - 1) signal = true;
         else signal = false;
-        //std::cout << "line 315 being printed" << std::endl;
+        std::cout << "line 303 being printed" << std::endl;
         return_mer.push_back(min_mer); // not sure about true or false
       }
     }
     //std::cout << "return_mer size: " << return_mer.size() << " | should be equal to 1" << std::endl;
+    if (return_mer.size() != 1) std::cout << "ERROR: Something wrong has happened !!" << std::endl;
     auto return_variable = return_mer.back();
     return_mer.pop_back();
     //int x;
     //std::cin >> x;
     return (return_variable);
   }
+  
+  star_mers_type last_minimizer() {
+    return this->min_mer;
+  }
+
   #endif
   star_mers_type trial_minimizer(star_mers_type mer) {
     //std::cout << l << " " << k << " " << buf << " " << mask << " " << kmer_span << std::endl;
@@ -345,7 +352,7 @@ public:
   virtual void start(int thid) {
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
-    minimizer_factory mmf(15, 1); // k and w value hardcoded, NEET TO CHANGE
+    minimizer_factory mmf(6, 1); // k and w value hardcoded, NEET TO CHANGE
     switch(op_) {
      case COUNT:
       std::cout << "Counting Happening" << std::endl; // Souvadra's addition
@@ -360,26 +367,20 @@ public:
           //std::cout << signal << std::endl;  // Souvadra's addition
           if (signal) {
             //std::cout << "count = " << count << ", " <<  *mers << " is being added to hash" << std::endl;
-            std::string ANSWER = selected.to_str();
-            std::cout << ANSWER << std::endl; // souvadra's addition          
+            std::string ANS = selected.to_str();
+            std::cout << ANS << std::endl; // souvadra's addition          
             ary_.add(selected, 1);
           }
         }
         ++count;
       }
-      #endif 
-      #if 0
-      std::cout << "k-mer size: " << mers->k() << std::endl; // Souvadra's addition
-      for( ; mers; ++mers) {
-        if((*filter_)(*mers)) {
-          std::string mer_str = mers->to_str();
-          std::cout << mer_str << " Sequence string of *mers object" << std::endl; // Souvadra's addition
-          std::cout << count << " Count value" << std::endl; // Souvadra's addition
-          ary_.add(*mers, 1); 
-        }
-        ++count;
+      if (true) { // souvadra's addition
+        auto last_mer = mmf.last_minimizer();
+        std::string ANSWER = last_mer.to_str();
+        std::cout << last_mer << std::endl;
+        ary_.add(last_mer, 1);
       }
-      #endif
+      #endif 
       break;
 
     case PRIME:
