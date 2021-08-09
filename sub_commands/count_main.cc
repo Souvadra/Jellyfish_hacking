@@ -242,6 +242,7 @@ public:
           for (j = 0; j <= buf_pos; ++j)
             if (min.x >= buf[j].x) min = buf[j], min_pos = j;
         }
+        std::cout << "buf_pos = " << buf_pos << ", " << "min_pos = " << min_pos << std::endl;
         if (++buf_pos == w) buf_pos = 0;
       }
       //std::cout << "line 246 being printed" << std::endl;
@@ -275,17 +276,17 @@ public:
       buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
       buf_mer_add(info_mer, buf_pos); // Souvadra's addition
       if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
-        //std::cout << "line 275 being printed" << std::endl;
+        // std::cout << "line 275 being printed" << std::endl;
         for (j = buf_pos + 1; j < w; ++j)
-          if (min.x == buf[j].x && buf[j].y != min.y) signal = true, return_mer.push_back(buf_mer[j]);
+          if (min.x == buf[j].x && buf[j].y != min.y) signal = true, return_mer.push_back(buf_mer[j]), std::cout << "line 280 being printed" << std::endl;
         for (j = 0; j < buf_pos; ++j)
-          if (min.x == buf[j].x && buf[j].y != min.y) signal = true, return_mer.push_back(buf_mer[j]);
+          if (min.x == buf[j].x && buf[j].y != min.y) signal = true, return_mer.push_back(buf_mer[j]), std::cout << "line 282 being printed" << std::endl;
 		  }
       if (info.x <= min.x) { // a new minimum; then write the old min
-        if (l >= w + k && min.x != UINT64_MAX) signal = true, return_mer.push_back(min_mer); // std::cout << "line 282 being printed" << std::endl;
+        if (l >= w + k && min.x != UINT64_MAX) signal = true, return_mer.push_back(min_mer), std::cout << "line 285 being printed" << std::endl;
         min = info, min_pos = buf_pos, min_mer = info_mer;
       } else if (buf_pos == min_pos) { // old min has moved outside the window
-        if (l >= w + k - 1 && min.x != UINT64_MAX) signal = true, return_mer.push_back(min_mer); // std::cout << "line 285 being printed" << std::endl;
+        if (l >= w + k - 1 && min.x != UINT64_MAX) signal = true, return_mer.push_back(min_mer), std::cout << "line 285 being printed" << std::endl;
         for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
           if (min.x >= buf[j].x) min = buf[j], min_pos = j, min_mer = buf_mer[j]; //  >= is important s.t. min is always the closest k-mer
         for (j = 0; j <= buf_pos; ++j)
@@ -298,19 +299,19 @@ public:
 			  } 
       }
       if (++buf_pos == w) buf_pos = 0;
+      /* TAKEN CARE OF USING THE LAST_MINIMIZER FUNCTION ...
       if (min.x != UINT64_MAX && return_mer.empty()) {
         if (l >= w + k - 1) signal = true;
         else signal = false;
         std::cout << "line 303 being printed" << std::endl;
         return_mer.push_back(min_mer); // not sure about true or false
-      }
+      } */
     }
     //std::cout << "return_mer size: " << return_mer.size() << " | should be equal to 1" << std::endl;
     if (return_mer.size() != 1) std::cout << "ERROR: Something wrong has happened !!" << std::endl;
+    std::cout << "size of return_mer: " << return_mer.size() << std::endl;
     auto return_variable = return_mer.back();
     return_mer.pop_back();
-    //int x;
-    //std::cin >> x;
     return (return_variable);
   }
   
@@ -352,7 +353,7 @@ public:
   virtual void start(int thid) {
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
-    minimizer_factory mmf(6, 1); // k and w value hardcoded, NEET TO CHANGE
+    minimizer_factory mmf(6,2); // k and w value hardcoded, NEET TO CHANGE
     switch(op_) {
      case COUNT:
       std::cout << "Counting Happening" << std::endl; // Souvadra's addition
