@@ -236,17 +236,16 @@ public:
     buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
     buf_mer_add(info_mer, buf_pos); // Souvadra's addition
     if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
-      // std::cout << "line 275 being printed" << std::endl;
       for (j = buf_pos + 1; j < w; ++j)
-        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(buf_mer[j]); //, std::cout << "line 280 being printed" << std::endl;
+        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(buf_mer[j]);
       for (j = 0; j < buf_pos; ++j)
-        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(buf_mer[j]); //, std::cout << "line 282 being printed" << std::endl;
+        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(buf_mer[j]);
 		}
     if (info.x <= min.x) { // a new minimum; then write the old min
-        if (l >= w + k && min.x != UINT64_MAX) return_mer.push_back(min_mer); //, std::cout << "line 285 being printed" << std::endl;
+        if (l >= w + k && min.x != UINT64_MAX) return_mer.push_back(min_mer);
         min = info, min_pos = buf_pos, min_mer = info_mer;
     } else if (buf_pos == min_pos) { // old min has moved outside the window
-      if (l >= w + k - 1 && min.x != UINT64_MAX) return_mer.push_back(min_mer); //, std::cout << "line 285 being printed" << std::endl;
+      if (l >= w + k - 1 && min.x != UINT64_MAX) return_mer.push_back(min_mer);
       for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
         if (min.x >= buf[j].x) min = buf[j], min_pos = j, min_mer = buf_mer[j]; //  >= is important s.t. min is always the closest k-mer
       for (j = 0; j <= buf_pos; ++j)
@@ -259,52 +258,22 @@ public:
 			}
     }
     if (++buf_pos == w) buf_pos = 0;
-    // TAKEN CARE OF USING THE LAST_MINIMIZER FUNCTION ... 
-    /* if (min.x != UINT64_MAX && return_mer.empty()) {
-      signal = false;
-      std::cout << "line 303 being printed" << std::endl;
-      return_mer.push_back(min_mer); // not sure about true or false
-    } */
-    /*
-    // Time to return the minimizer:
-    if (this->signal == false)
-      return mer;
-    else {
-      if (return_mer.size() != 1) std::cout << "ERROR: Something wrong has happened !!" << std::endl;
-      // std::cout << "size of return_mer: " << return_mer.size() << std::endl;
-      auto return_variable = return_mer.back();
-      return_mer.pop_back();
-      return (return_variable);
-    } */
   }
   #endif
-
-  #if 0
-  // dummy version of this code 
-  star_mers_type minimizer_helper(star_mers_type mer, int c) {return mer;}
-  #endif 
 
   void select_minimizer(star_mers_type mer) {
     if (buf_mer.empty()) {
       std::string str = mer.to_str();
-      //star_mers_type dummy;
       for (i = l = 0; i < (int)str.length(); ++i) {
         int c = seq_nt4_table[(uint8_t)str[i]];
-        //std::cout << "value of c = " << c << std::endl;
-        signal = false;
         minimizer_helper(mer, c);
       }
-      //buf_mer.push_back(mer); // dummy operation to do my debugging experiment
-      // return dummy;
     } else {
       char str = mer.to_str().back();
       int c = seq_nt4_table[(uint8_t)str];
-      //std::cout << "value of c = " << c << std::endl;
-      signal = true;
       minimizer_helper(mer,c);
     }
     signal = true;
-    //return mer;
   }
 
   star_mers_type last_minimizer() {
@@ -345,23 +314,21 @@ public:
         if((*filter_)(*mers)) {
           std::string mer_str = mers->to_str();
           mmf.select_minimizer(*mers);
-          //bool signal = mmf.signal; 
-          //std::cout << "Sent: " << *mers << ",  ";
-          //std::cout << typeid(*mers).name() << "  " << typeid(selected).name() << std::endl;
           //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {                         
-          //std::cout << signal << std::endl;  // Souvadra's addition 
           if (!mmf.return_mer.empty()) {
+            std::cout << "yes ";
             //std::cout << "count = " << count << ", " <<  *mers << " is being added to hash" << std::endl;          
             auto selected = mmf.return_mer.back();
             std::string ANS = selected.to_str();
             std::cout << "Received: " << ANS << std::endl; // souvadra's addition
             mmf.return_mer.pop_back();
             ary_.add(selected, 1);
-          } //else std::cout << "Received: NOTHING" << std::endl;
+          } else std::cout << "no" << std::endl;
         }
         ++count;
       }
       if (true) { // souvadra's addition
+        std::cout << "yes ";
         auto last_mer = mmf.last_minimizer();
         std::string ANSWER = last_mer.to_str();
         std::cout << "Received: " << last_mer << std::endl;
