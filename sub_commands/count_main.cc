@@ -183,10 +183,11 @@ private:
   int kmer_span;
   tiny_queue_t tq;
   mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
-  std::vector<star_mers_type> buf_mer, return_mer; //Souvadra's invention
+  std::vector<star_mers_type> buf_mer; //Souvadra's invention
   star_mers_type min_mer; // Souvadra's invention
 public:
   bool signal; // tells Jellyfish if it should put the returned mer into an object or not
+  std::vector<star_mers_type> return_mer; // Souvadra's  addition
 
   minimizer_factory(int k, int w) {
     assert((w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
@@ -211,7 +212,7 @@ public:
 
   #if 1
   // new version of this code 
-  star_mers_type minimizer_helper(star_mers_type mer, int c) {
+  void minimizer_helper(star_mers_type mer, int c) {
     mm128_t info = { UINT64_MAX, UINT64_MAX };
     star_mers_type info_mer; // Souvadra's addition
     if (c < 4) { // not an ambiguous base
@@ -255,15 +256,16 @@ public:
           if (min.x == buf[j].x && min.y != buf[j].y) return_mer.push_back(buf_mer[j]);
         for (j = 0; j <= buf_pos; ++j)
           if (min.x == buf[j].x && min.y != buf[j].y) return_mer.push_back(buf_mer[j]);
-			} 
+			}
     }
     if (++buf_pos == w) buf_pos = 0;
     // TAKEN CARE OF USING THE LAST_MINIMIZER FUNCTION ... 
-    if (min.x != UINT64_MAX && return_mer.empty()) {
+    /* if (min.x != UINT64_MAX && return_mer.empty()) {
       signal = false;
       std::cout << "line 303 being printed" << std::endl;
       return_mer.push_back(min_mer); // not sure about true or false
-    } 
+    } */
+    /*
     // Time to return the minimizer:
     if (this->signal == false)
       return mer;
@@ -273,33 +275,36 @@ public:
       auto return_variable = return_mer.back();
       return_mer.pop_back();
       return (return_variable);
-    }
+    } */
   }
-  #endif 
+  #endif
 
   #if 0
   // dummy version of this code 
-  star_mers_type minimizer_helper(star_mers_type mer, int c) {
-    return mer;
-  }
+  star_mers_type minimizer_helper(star_mers_type mer, int c) {return mer;}
   #endif 
 
-  star_mers_type select_minimizer(star_mers_type mer) {
+  void select_minimizer(star_mers_type mer) {
     if (buf_mer.empty()) {
       std::string str = mer.to_str();
-      star_mers_type dummy;
+      //star_mers_type dummy;
       for (i = l = 0; i < (int)str.length(); ++i) {
         int c = seq_nt4_table[(uint8_t)str[i]];
+        //std::cout << "value of c = " << c << std::endl;
         signal = false;
-        dummy = minimizer_helper(mer, c);
+        minimizer_helper(mer, c);
       }
-      return dummy;
+      //buf_mer.push_back(mer); // dummy operation to do my debugging experiment
+      // return dummy;
     } else {
       char str = mer.to_str().back();
       int c = seq_nt4_table[(uint8_t)str];
+      //std::cout << "value of c = " << c << std::endl;
       signal = true;
-      return minimizer_helper(mer,c);
+      minimizer_helper(mer,c);
     }
+    signal = true;
+    //return mer;
   }
 
   star_mers_type last_minimizer() {
@@ -309,8 +314,6 @@ public:
 };
 
 // ****************************** Souvadra's addition ends ************************* //
-
-
 enum OPERATION { COUNT, PRIME, UPDATE };
 template<typename MerIteratorType, typename ParserType>
 class mer_counter_base : public jellyfish::thread_exec {
@@ -333,7 +336,7 @@ public:
   virtual void start(int thid) {
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
-    minimizer_factory mmf(6,1); // k and w value hardcoded, NEET TO CHANGE
+    minimizer_factory mmf(6,2); // k and w value hardcoded, NEET TO CHANGE
     switch(op_) {
      case COUNT:
       std::cout << "Counting Happening" << std::endl; // Souvadra's addition
@@ -341,18 +344,20 @@ public:
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
           std::string mer_str = mers->to_str();
-          auto selected = mmf.select_minimizer(*mers);
-          bool signal = mmf.signal; 
-          std::cout << "Sent: " << *mers << ",  ";
+          mmf.select_minimizer(*mers);
+          //bool signal = mmf.signal; 
+          //std::cout << "Sent: " << *mers << ",  ";
           //std::cout << typeid(*mers).name() << "  " << typeid(selected).name() << std::endl;
           //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {                         
           //std::cout << signal << std::endl;  // Souvadra's addition 
-          if (signal) {
-            //std::cout << "count = " << count << ", " <<  *mers << " is being added to hash" << std::endl;
+          if (!mmf.return_mer.empty()) {
+            //std::cout << "count = " << count << ", " <<  *mers << " is being added to hash" << std::endl;          
+            auto selected = mmf.return_mer.back();
             std::string ANS = selected.to_str();
-            std::cout << "Received: " << ANS << std::endl; // souvadra's addition          
+            std::cout << "Received: " << ANS << std::endl; // souvadra's addition
+            mmf.return_mer.pop_back();
             ary_.add(selected, 1);
-          } else std::cout << "Received: NOTHING" << std::endl;
+          } //else std::cout << "Received: NOTHING" << std::endl;
         }
         ++count;
       }
