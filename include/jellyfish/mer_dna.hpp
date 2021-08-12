@@ -143,6 +143,8 @@ struct mer_dna_traits { };
 template<typename derived>
 class mer_base {
 public:
+  //std::string hati_var; // Souvadra's addition
+  unsigned int rid; // Souvadra's addition
   typedef typename mer_dna_traits<derived>::base_type base_type;
 
   enum { CODE_A, CODE_C, CODE_G, CODE_T,
@@ -465,6 +467,29 @@ public:
     to_chars(res.begin());
     return res;
   }
+
+  // Souvadra's dummy functions ---------------------
+  std::string dummy_function(std::string input) {
+    //this->souvadra_variable = 1;
+    std::string y = this->to_str();
+    std::string x = y + " dummy_function " + input;
+    return x;
+  }
+
+  void set_rid(unsigned int rid_val) {
+    this->rid = rid_val;
+  }
+
+  int get_rid() {
+    return this->rid;
+  }
+
+  /* void dummy2_function() {
+    this->hati_var = "variable made by souvadra";
+    std::cout << this->hati_var << std::endl;
+    //std::cout << this->hati_var << std::endl;
+  } */
+  // -------------------------------------------------
 
   // Transform the k-mer into a string. For the char * version,
   // assume that the buffer is large enough to receive k+1

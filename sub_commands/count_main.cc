@@ -305,14 +305,13 @@ public:
   virtual void start(int thid) {
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
-    minimizer_factory mmf(15,15); // k and w value hardcoded, NEET TO CHANGE
+    minimizer_factory mmf(6,1); // k and w value hardcoded, NEET TO CHANGE
     switch(op_) {
      case COUNT:
       std::cout << "Counting Happening" << std::endl; // Souvadra's addition
       #if 1
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
-          std::string mer_str = mers->to_str();
           mmf.select_minimizer(*mers);
           //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {                         
           if (!mmf.return_mer.empty()) {
