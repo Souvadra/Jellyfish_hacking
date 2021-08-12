@@ -144,7 +144,7 @@ template<typename derived>
 class mer_base {
 public:
   //std::string hati_var; // Souvadra's addition
-  unsigned int rid; // Souvadra's addition
+  uint32_t rid; // Souvadra's addition
   typedef typename mer_dna_traits<derived>::base_type base_type;
 
   enum { CODE_A, CODE_C, CODE_G, CODE_T,
@@ -476,11 +476,11 @@ public:
     return x;
   }
 
-  void set_rid(unsigned int rid_val) {
+  void set_rid(uint32_t rid_val) {
     this->rid = rid_val;
   }
 
-  int get_rid() {
+  uint32_t get_rid() const {
     return this->rid;
   }
 

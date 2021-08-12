@@ -179,15 +179,13 @@ private:
   uint64_t shift1, mask;
   uint64_t kmer[2] = {0,0};
   int i, j, l, buf_pos, min_pos = 0;
-  uint32_t rid = 0; //hardcoded right now, will need to change later
   int kmer_span;
-  tiny_queue_t tq;
   mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
   std::vector<star_mers_type> buf_mer; //Souvadra's invention
   star_mers_type min_mer; // Souvadra's invention
 public:
-  bool signal; // tells Jellyfish if it should put the returned mer into an object or not
   std::vector<star_mers_type> return_mer; // Souvadra's  addition
+  uint32_t rid = 0;
 
   minimizer_factory(int k, int w) {
     assert((w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
@@ -196,8 +194,7 @@ public:
     shift1 = 2 * (k - 1);
     mask = (1ULL<<2*k) - 1;
     kmer_span = k; // Do I even need this variable anymore ???
-    memset(buf, 0xff, w * 16);
-    memset(&tq, 0, sizeof(tiny_queue_t));
+    // memset(buf, 0xff, w * 16); // doing it later 
   }
 
   void buf_mer_add(star_mers_type mer, int buf_pos) {
@@ -231,7 +228,7 @@ public:
       }
     } else {
       std::cout << "HEEYYYYYY!!!!        AMBIGUOUS BASE FOUND          DO SOMETHING \n" << std::endl;
-      l = 0, tq.count = tq.front = 0; kmer_span = 0; // THE CODE SHOULD NEVER COME HERE, NEVER !!
+      l = 0; kmer_span = 0; // THE CODE SHOULD NEVER COME HERE, NEVER !!
     }
     buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
     buf_mer_add(info_mer, buf_pos); // Souvadra's addition
@@ -261,7 +258,15 @@ public:
   }
   #endif
 
-  void select_minimizer(star_mers_type mer) {
+  void select_minimizer(star_mers_type mer, uint32_t rid) {
+    //std::cout << this->rid << ", " << rid << std::endl;
+    if (this->rid != rid) {
+        this->rid = rid;
+        if (rid != 1) return_mer.push_back(min_mer);
+        buf_mer.clear();
+        memset(buf, 0xff, w * 16);
+        min = { UINT64_MAX, UINT64_MAX };
+    }
     if (buf_mer.empty()) {
       std::string str = mer.to_str();
       for (i = l = 0; i < (int)str.length(); ++i) {
@@ -273,7 +278,6 @@ public:
       int c = seq_nt4_table[(uint8_t)str];
       minimizer_helper(mer,c);
     }
-    signal = true;
   }
 
   star_mers_type last_minimizer() {
@@ -305,14 +309,15 @@ public:
   virtual void start(int thid) {
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
-    minimizer_factory mmf(6,1); // k and w value hardcoded, NEET TO CHANGE
+    minimizer_factory mmf(4,4); // k and w value hardcoded, NEET TO CHANGE
     switch(op_) {
      case COUNT:
       std::cout << "Counting Happening" << std::endl; // Souvadra's addition
       #if 1
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
-          mmf.select_minimizer(*mers);
+          //std::cout << mmf.rid << ", " << mers->get_rid() << std::endl; // Souvadra's modification
+          mmf.select_minimizer(*mers, mers->get_rid());
           //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {                         
           if (!mmf.return_mer.empty()) {
             std::cout << "yes ";

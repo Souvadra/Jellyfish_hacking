@@ -23,7 +23,7 @@ class mer_iterator : public std::iterator<std::input_iterator_tag,MerType> {
   MerType                     rcm_; // reverse complement mer
   unsigned int                filled_;
   const bool                  canonical_;
-  unsigned int                read_number = 0;
+  uint32_t                    read_number = 0;
 public:
   typedef MerType      mer_type;
   typedef SequencePool sequence_parser_type;
@@ -79,9 +79,9 @@ public:
       } while(filled_ < m_.k() && cseq_ < (*job_)->end);
       if(filled_ >= m_.k())
       {
-        std::cout << "Haha: " << m_.dummy_function("hello") << std::endl; // Souvadra's addition'
+        //std::cout << "Haha: " << m_.dummy_function("hello") << std::endl; // Souvadra's addition'
         m_.set_rid(read_number); // Souvadra's addition
-        std::cout << m_.get_rid() << std::endl; // Souvadra's addition
+        //std::cout << m_.rid << std::endl; // Souvadra's addition
         break;
       }
       
