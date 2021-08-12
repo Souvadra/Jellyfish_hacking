@@ -468,14 +468,7 @@ public:
     return res;
   }
 
-  // Souvadra's dummy functions ---------------------
-  std::string dummy_function(std::string input) {
-    //this->souvadra_variable = 1;
-    std::string y = this->to_str();
-    std::string x = y + " dummy_function " + input;
-    return x;
-  }
-
+  // Souvadra's functions ---------------------------
   void set_rid(uint32_t rid_val) {
     this->rid = rid_val;
   }
@@ -483,12 +476,6 @@ public:
   uint32_t get_rid() const {
     return this->rid;
   }
-
-  /* void dummy2_function() {
-    this->hati_var = "variable made by souvadra";
-    std::cout << this->hati_var << std::endl;
-    //std::cout << this->hati_var << std::endl;
-  } */
   // -------------------------------------------------
 
   // Transform the k-mer into a string. For the char * version,
