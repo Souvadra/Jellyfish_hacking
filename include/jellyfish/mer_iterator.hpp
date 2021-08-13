@@ -12,7 +12,6 @@
 
 #include <iterator>
 #include <jellyfish/mer_dna.hpp>
-#include <iostream>         // I added this
 
 namespace jellyfish {
 template<typename SequencePool, typename MerType>

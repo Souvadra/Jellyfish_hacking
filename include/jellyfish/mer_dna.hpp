@@ -143,7 +143,6 @@ struct mer_dna_traits { };
 template<typename derived>
 class mer_base {
 public:
-  //std::string hati_var; // Souvadra's addition
   uint32_t rid; // Souvadra's addition
   typedef typename mer_dna_traits<derived>::base_type base_type;
 

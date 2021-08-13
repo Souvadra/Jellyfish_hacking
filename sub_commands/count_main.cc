@@ -181,9 +181,11 @@ private:
   int i, j, l, buf_pos, min_pos = 0;
   int kmer_span;
   mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
-  std::vector<star_mers_type> buf_mer; //Souvadra's invention
+  star_mers_type buf_mer_2[256]; // Souvadra's addition
+  // std::vector<star_mers_type> buf_mer; //Souvadra's invention
   star_mers_type min_mer; // Souvadra's invention
 public:
+  star_mers_type mer;
   std::vector<star_mers_type> return_mer; // Souvadra's  addition
   uint32_t rid = 0;
 
@@ -194,9 +196,10 @@ public:
     shift1 = 2 * (k - 1);
     mask = (1ULL<<2*k) - 1;
     kmer_span = k; // Do I even need this variable anymore ???
-    // memset(buf, 0xff, w * 16); // doing it later 
+    memset(buf, 0xff, w * 16);
   }
 
+  #if 0
   void buf_mer_add(star_mers_type mer, int buf_pos) {
     // a custom function that makes sure the size of the buf_mer_vector always remains
     // equal to this->w.
@@ -206,10 +209,11 @@ public:
       buf_mer[buf_pos] = mer;
     }
   }
+  #endif 
 
   #if 1
   // new version of this code 
-  void minimizer_helper(star_mers_type mer, int c) {
+  void minimizer_helper(int c) {
     mm128_t info = { UINT64_MAX, UINT64_MAX };
     star_mers_type info_mer; // Souvadra's addition
     if (c < 4) { // not an ambiguous base
@@ -231,12 +235,13 @@ public:
       l = 0; kmer_span = 0; // THE CODE SHOULD NEVER COME HERE, NEVER !!
     }
     buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
-    buf_mer_add(info_mer, buf_pos); // Souvadra's addition
+    //buf_mer_add(info_mer, buf_pos); // Souvadra's addition
+    buf_mer_2[buf_pos] = info_mer; // Souvadra's addition
     if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
       for (j = buf_pos + 1; j < w; ++j)
-        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(buf_mer[j]);
+        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(buf_mer_2[j]);
       for (j = 0; j < buf_pos; ++j)
-        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(buf_mer[j]);
+        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(buf_mer_2[j]);
 		}
     if (info.x <= min.x) { // a new minimum; then write the old min
         if (l >= w + k && min.x != UINT64_MAX) return_mer.push_back(min_mer);
@@ -244,39 +249,39 @@ public:
     } else if (buf_pos == min_pos) { // old min has moved outside the window
       if (l >= w + k - 1 && min.x != UINT64_MAX) return_mer.push_back(min_mer);
       for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
-        if (min.x >= buf[j].x) min = buf[j], min_pos = j, min_mer = buf_mer[j]; //  >= is important s.t. min is always the closest k-mer
+        if (min.x >= buf[j].x) min = buf[j], min_pos = j, min_mer = buf_mer_2[j]; //  >= is important s.t. min is always the closest k-mer
       for (j = 0; j <= buf_pos; ++j)
-        if (min.x >= buf[j].x) min = buf[j], min_pos = j, min_mer = buf_mer[j];
+        if (min.x >= buf[j].x) min = buf[j], min_pos = j, min_mer = buf_mer_2[j];
       if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
         for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
-          if (min.x == buf[j].x && min.y != buf[j].y) return_mer.push_back(buf_mer[j]);
+          if (min.x == buf[j].x && min.y != buf[j].y) return_mer.push_back(buf_mer_2[j]);
         for (j = 0; j <= buf_pos; ++j)
-          if (min.x == buf[j].x && min.y != buf[j].y) return_mer.push_back(buf_mer[j]);
+          if (min.x == buf[j].x && min.y != buf[j].y) return_mer.push_back(buf_mer_2[j]);
 			}
     }
     if (++buf_pos == w) buf_pos = 0;
   }
   #endif
 
-  void select_minimizer(star_mers_type mer, uint32_t rid) {
+  void select_minimizer(uint32_t rid) {
     //std::cout << this->rid << ", " << rid << std::endl;
+    //mer = mer_obj;
     if (this->rid != rid) {
         this->rid = rid;
         if (rid != 1) return_mer.push_back(min_mer);
-        buf_mer.clear();
-        memset(buf, 0xff, w * 16);
+        //buf_mer.clear();
+        // memset(buf, 0xff, w * 16); Do I need to do it again ???, already initilized once 
+        //memset(buf_mer_2, 0xff, w * 16);
         min = { UINT64_MAX, UINT64_MAX };
-    }
-    if (buf_mer.empty()) {
-      std::string str = mer.to_str();
-      for (i = l = 0; i < (int)str.length(); ++i) {
-        int c = seq_nt4_table[(uint8_t)str[i]];
-        minimizer_helper(mer, c);
-      }
+        std::string str = mer.to_str();
+        for (i = l = 0; i < (int)str.length(); ++i) {
+          int c = seq_nt4_table[(uint8_t)str[i]];
+          minimizer_helper(c);
+        }
     } else {
       char str = mer.to_str().back();
       int c = seq_nt4_table[(uint8_t)str];
-      minimizer_helper(mer,c);
+      minimizer_helper(c);
     }
   }
 
@@ -309,7 +314,7 @@ public:
   virtual void start(int thid) {
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
-    minimizer_factory mmf(4,4); // k and w value hardcoded, NEET TO CHANGE
+    minimizer_factory mmf(5,3); // k and w value hardcoded, NEET TO CHANGE
     switch(op_) {
      case COUNT:
       std::cout << "Counting Happening" << std::endl; // Souvadra's addition
@@ -317,7 +322,8 @@ public:
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
           //std::cout << mmf.rid << ", " << mers->get_rid() << std::endl; // Souvadra's modification
-          mmf.select_minimizer(*mers, mers->get_rid());
+          mmf.mer = *mers;
+          mmf.select_minimizer(mers->get_rid());
           //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {                         
           if (!mmf.return_mer.empty()) {
             std::cout << "yes ";
@@ -509,14 +515,9 @@ int count_main(int argc, char *argv[])
                              do_op, mer_filter.get());
     counter.exec_join(args.threads_arg);
   } else {
-    // std::cout << do_op << std::endl; // Souvadra's addition
     mer_counter counter(args.threads_arg, ary, streams,
                         do_op, mer_filter.get());
-    std::cout << "count_main.cc @line 335" << std::endl; // Souvadra's addition
-    // THIS IS WHERE THE mer_iterator IS BEING CALLED 
     counter.exec_join(args.threads_arg);
-    // THE ABOVE LINE IS DOING ALL THE mer_iteration WORK
-    std::cout << "count_main.cc @line 339" << std::endl; // Souvadra's addition
   }
 
   // If we have a manager, wait for it
