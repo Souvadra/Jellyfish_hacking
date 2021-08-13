@@ -326,25 +326,25 @@ public:
           mmf.select_minimizer(mers->get_rid());
           //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {                         
           if (!mmf.return_mer.empty()) {
-            std::cout << "yes ";
+            std::cout << "yes" << std::endl;
             //std::cout << "count = " << count << ", " <<  *mers << " is being added to hash" << std::endl;          
-            auto selected = mmf.return_mer.back();
-            std::string ANS = selected.to_str();
-            std::cout << "Received: " << ANS << std::endl; // souvadra's addition
+            //auto selected = mmf.return_mer.back();
+            //std::string ANS = selected.to_str();
+            //std::cout << "Received: " << ANS << std::endl; // souvadra's addition
+            ary_.add(mmf.return_mer.back(), 1);
             mmf.return_mer.pop_back();
-            ary_.add(selected, 1);
-          } else std::cout << "no" << std::endl;
+          } else std::cout << "no " << std::endl;
         }
         ++count;
       }
       if (true) { // souvadra's addition
-        std::cout << "yes ";
-        auto last_mer = mmf.last_minimizer();
-        std::string ANSWER = last_mer.to_str();
-        std::cout << "Received: " << last_mer << std::endl;
-        ary_.add(last_mer, 1);
+        std::cout << "yes " << std::endl;
+        //auto last_mer = mmf.last_minimizer();
+        //std::string ANSWER = last_mer.to_str();
+        //std::cout << "Received: " << last_mer << std::endl;
+        ary_.add(mmf.last_minimizer(), 1);
       }
-      #endif 
+      #endif
       break;
 
     case PRIME:
