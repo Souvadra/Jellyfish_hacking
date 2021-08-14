@@ -264,14 +264,10 @@ public:
   #endif
 
   void select_minimizer(uint32_t rid) {
-    //std::cout << this->rid << ", " << rid << std::endl;
-    //mer = mer_obj;
     if (this->rid != rid) {
         this->rid = rid;
         if (rid != 1) return_mer.push_back(min_mer);
-        //buf_mer.clear();
-        // memset(buf, 0xff, w * 16); Do I need to do it again ???, already initilized once 
-        //memset(buf_mer_2, 0xff, w * 16);
+        // memset(buf, 0xff, w * 16); Do I need to do it again ???, already initilized once
         min = { UINT64_MAX, UINT64_MAX };
         std::string str = mer.to_str();
         for (i = l = 0; i < (int)str.length(); ++i) {
@@ -314,10 +310,10 @@ public:
   virtual void start(int thid) {
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
-    minimizer_factory mmf(mers->k(),3); // w value hardcoded, NEET TO CHANGE
+    minimizer_factory mmf(mers->k(),21); // w value hardcoded, NEET TO CHANGE
     switch(op_) {
      case COUNT:
-      std::cout << "Counting Happening" << std::endl; // Souvadra's addition
+      //std::cout << "Counting Happening" << std::endl; // Souvadra's addition
       #if 1
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
@@ -326,19 +322,19 @@ public:
           mmf.select_minimizer(mers->get_rid());
           //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {                         
           if (!mmf.return_mer.empty()) {
-            std::cout << "yes" << std::endl;
+            ///std::cout << "yes" << std::endl;
             //std::cout << "count = " << count << ", " <<  *mers << " is being added to hash" << std::endl;          
             //auto selected = mmf.return_mer.back();
             //std::string ANS = selected.to_str();
             //std::cout << "Received: " << ANS << std::endl; // souvadra's addition
             ary_.add(mmf.return_mer.back(), 1);
             mmf.return_mer.pop_back();
-          } else std::cout << "no " << std::endl;
+          } ///else std::cout << "no " << std::endl;
         }
         ++count;
       }
       if (true) { // souvadra's addition
-        std::cout << "yes " << std::endl;
+        ///std::cout << "yes " << std::endl;
         //auto last_mer = mmf.last_minimizer();
         //std::string ANSWER = last_mer.to_str();
         //std::cout << "Received: " << last_mer << std::endl;
