@@ -178,15 +178,18 @@ private:
   int k, w;
   uint64_t shift1, mask;
   uint64_t kmer[2] = {0,0};
-  int i, j, l, buf_pos, min_pos = 0;
+  int i, j, l, buf_pos = 0;
   int kmer_span;
   mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
-  star_mers_type buf_mer_2[256]; // Souvadra's addition
+  //star_mers_type buf_mer_2[256]; // Souvadra's addition
   // std::vector<star_mers_type> buf_mer; //Souvadra's invention
   star_mers_type min_mer; // Souvadra's invention
 public:
-  star_mers_type mer;
-  std::vector<star_mers_type> return_mer; // Souvadra's  addition
+  //star_mers_type mer;
+  int min_pos = 0;
+  bool new_min = false;
+  int info_pos;
+  std::vector<int> return_mer; // Souvadra's  addition
   uint32_t rid = 0;
 
   minimizer_factory(int k, int w) {
@@ -199,23 +202,10 @@ public:
     memset(buf, 0xff, w * 16);
   }
 
-  #if 0
-  void buf_mer_add(star_mers_type mer, int buf_pos) {
-    // a custom function that makes sure the size of the buf_mer_vector always remains
-    // equal to this->w.
-    if ((int)buf_mer.size() < this->w) { // Need to check if this typecast is working properly // Souvadra
-      buf_mer.push_back(mer);
-    } else {
-      buf_mer[buf_pos] = mer;
-    }
-  }
-  #endif 
-
-  #if 1
-  // new version of this code 
   void minimizer_helper(int c) {
+    new_min = false;
     mm128_t info = { UINT64_MAX, UINT64_MAX };
-    star_mers_type info_mer; // Souvadra's addition
+    //star_mers_type info_mer; // Souvadra's addition
     if (c < 4) { // not an ambiguous base
       int z;
       kmer_span = l + 1 < k? l + 1 : k;
@@ -228,66 +218,63 @@ public:
       if (l >= k && kmer_span < 256) {
         info.x = hash64(kmer[z], mask) << 8 | kmer_span;
 			  info.y = (uint64_t)rid<<32 | (uint32_t)i<<1 | z;
-        info_mer = mer; // Souvadra's addition
+        //info_mer = mer; // Souvadra's addition
       }
     } else {
       std::cout << "HEEYYYYYY!!!!        AMBIGUOUS BASE FOUND          DO SOMETHING \n" << std::endl;
       l = 0; kmer_span = 0; // THE CODE SHOULD NEVER COME HERE, NEVER !!
     }
     buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
+    info_pos = buf_pos;
     //buf_mer_add(info_mer, buf_pos); // Souvadra's addition
-    buf_mer_2[buf_pos] = info_mer; // Souvadra's addition
+    //buf_mer_2[info_pos] = info_mer; // Souvadra's addition
     if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
       for (j = buf_pos + 1; j < w; ++j)
-        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(buf_mer_2[j]);
+        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(j);
       for (j = 0; j < buf_pos; ++j)
-        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(buf_mer_2[j]);
+        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(j);
 		}
     if (info.x <= min.x) { // a new minimum; then write the old min
-        if (l >= w + k && min.x != UINT64_MAX) return_mer.push_back(min_mer);
-        min = info, min_pos = buf_pos, min_mer = info_mer;
+      new_min = true;
+      if (l >= w + k && min.x != UINT64_MAX) return_mer.push_back(-1); // -1 signifies push the old min_mer to the ary_ hash function
+      min = info, min_pos = buf_pos; // min_mer = info_mer;
     } else if (buf_pos == min_pos) { // old min has moved outside the window
-      if (l >= w + k - 1 && min.x != UINT64_MAX) return_mer.push_back(min_mer);
+      new_min = true;
+      if (l >= w + k - 1 && min.x != UINT64_MAX) return_mer.push_back(-1);
       for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
-        if (min.x >= buf[j].x) min = buf[j], min_pos = j, min_mer = buf_mer_2[j]; //  >= is important s.t. min is always the closest k-mer
+        if (min.x >= buf[j].x) min = buf[j], min_pos = j; // min_mer = buf_mer_2[j]; //  >= is important s.t. min is always the closest k-mer
       for (j = 0; j <= buf_pos; ++j)
-        if (min.x >= buf[j].x) min = buf[j], min_pos = j, min_mer = buf_mer_2[j];
+        if (min.x >= buf[j].x) min = buf[j], min_pos = j; // min_mer = buf_mer_2[j];
       if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
         for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
-          if (min.x == buf[j].x && min.y != buf[j].y) return_mer.push_back(buf_mer_2[j]);
+          if (min.x == buf[j].x && min.y != buf[j].y) return_mer.push_back(j);
         for (j = 0; j <= buf_pos; ++j)
-          if (min.x == buf[j].x && min.y != buf[j].y) return_mer.push_back(buf_mer_2[j]);
+          if (min.x == buf[j].x && min.y != buf[j].y) return_mer.push_back(j);
 			}
     }
     if (++buf_pos == w) buf_pos = 0;
   }
-  #endif
 
-  void select_minimizer(uint32_t rid) {
+  void select_minimizer(std::string str, uint32_t rid) {
     if (this->rid != rid) {
         this->rid = rid;
-        if (rid != 1) return_mer.push_back(min_mer);
+        if (rid != 1) return_mer.push_back(-1); // -1 signifies me to push the min_mer stored in the count function 
         // memset(buf, 0xff, w * 16); Do I need to do it again ???, already initilized once
         min = { UINT64_MAX, UINT64_MAX };
-        std::string str = mer.to_str();
+        //std::string str = mer.to_str();
         for (i = l = 0; i < (int)str.length(); ++i) {
           int c = seq_nt4_table[(uint8_t)str[i]];
           minimizer_helper(c);
         }
     } else {
-      char str = mer.to_str().back();
-      int c = seq_nt4_table[(uint8_t)str];
+      char st = str.back();
+      int c = seq_nt4_table[(uint8_t)st];
       minimizer_helper(c);
     }
   }
-
-  star_mers_type last_minimizer() {
-    return this->min_mer;
-  }
-
 };
-
 // ****************************** Souvadra's addition ends ************************* //
+
 enum OPERATION { COUNT, PRIME, UPDATE };
 template<typename MerIteratorType, typename ParserType>
 class mer_counter_base : public jellyfish::thread_exec {
@@ -311,36 +298,36 @@ public:
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
     minimizer_factory mmf(mers->k(),21); // w value hardcoded, NEET TO CHANGE
+    star_mers_type buf_mer_2[256]; // Souvadra's addition
+    star_mers_type min_mer; // Souvadra's addition
     switch(op_) {
      case COUNT:
-      //std::cout << "Counting Happening" << std::endl; // Souvadra's addition
-      #if 1
+      std::cout << "Counting Happening" << std::endl; // Souvadra's addition
+      int mer_pos; //Souvadra
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
-          //std::cout << mmf.rid << ", " << mers->get_rid() << std::endl; // Souvadra's modification
-          mmf.mer = *mers;
-          mmf.select_minimizer(mers->get_rid());
-          //if((rand() % 100) / 100.0 <= (2.0 / (mers->k() + 1.0))) {                         
-          if (!mmf.return_mer.empty()) {
-            ///std::cout << "yes" << std::endl;
-            //std::cout << "count = " << count << ", " <<  *mers << " is being added to hash" << std::endl;          
-            //auto selected = mmf.return_mer.back();
-            //std::string ANS = selected.to_str();
-            //std::cout << "Received: " << ANS << std::endl; // souvadra's addition
-            ary_.add(mmf.return_mer.back(), 1);
+          mmf.select_minimizer(mers->to_str(), mers->get_rid());
+          buf_mer_2[mmf.info_pos] = *mers;               
+          while (!mmf.return_mer.empty()) {
+            mer_pos = mmf.return_mer.back();
+            if (mer_pos == -1) {
+              ary_.add(min_mer, 1);
+              //std::cout << "line 316: " << min_mer.to_str() << std::endl;
+            } 
+            else {
+              ary_.add((buf_mer_2[mer_pos]), 1); 
+              //std::cout << "line 320: " << buf_mer_2[mer_pos].to_str() << std::endl;
+            }
             mmf.return_mer.pop_back();
-          } ///else std::cout << "no " << std::endl;
+          }
+          if (mmf.new_min) min_mer = buf_mer_2[mmf.min_pos]; 
         }
         ++count;
       }
       if (true) { // souvadra's addition
-        ///std::cout << "yes " << std::endl;
-        //auto last_mer = mmf.last_minimizer();
-        //std::string ANSWER = last_mer.to_str();
-        //std::cout << "Received: " << last_mer << std::endl;
-        ary_.add(mmf.last_minimizer(), 1);
+        //std::cout << "line 328: " << min_mer.to_str() << std::endl;
+        ary_.add(min_mer, 1); // basically the last min_mer left
       }
-      #endif
       break;
 
     case PRIME:
