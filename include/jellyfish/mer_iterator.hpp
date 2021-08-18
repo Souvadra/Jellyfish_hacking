@@ -80,6 +80,7 @@ public:
       {
         //std::cout << "Haha: " << m_.dummy_function("hello") << std::endl; // Souvadra's addition'
         m_.set_rid(read_number); // Souvadra's addition
+        if (canonical_) rcm_.set_rid(read_number);
         //std::cout << m_.rid << std::endl; // Souvadra's addition
         break;
       }
