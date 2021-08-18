@@ -177,7 +177,7 @@ class minimizer_factory {
 private:
   int k, w;
   uint64_t shift1, mask;
-  uint64_t kmer[2] = {0,0};
+  uint64_t kmer[2] = {0,0}; // can potentially make it a single uint64_t variable from an array (hopefully that will be little faster)
   int i, j, l, buf_pos = 0;
   int kmer_span;
   mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
@@ -205,9 +205,12 @@ public:
       int z;
       kmer_span = l + 1 < k? l + 1 : k;
       kmer[0] = (kmer[0] << 2 | c) & mask;           // forward k-mer
-      kmer[1] = (kmer[1] >> 2) | (3ULL^c) << shift1; // reverse k-mer
+      // Reverse k-mer is being calculated via Jellyfish itself, hence skipping
+      // this step here in minimap2 inspired code
+      //kmer[1] = (kmer[1] >> 2) | (3ULL^c) << shift1; // reverse k-mer
       
-      z = kmer[0] <= kmer[1]? 0 : 1; // strand // Souvadra: convert the < to <= to skip dealing 
+      z = 0; // always keeping the first start assuming that Jellyfish is taking care of this part
+      //z = kmer[0] <= kmer[1]? 0 : 1; // strand // Souvadra: convert the < to <= to skip dealing 
       //          with the situation where both the forward and the reverse k-mers are the same
       ++l;
       if (l >= k && kmer_span < 256) {
@@ -292,10 +295,11 @@ public:
     star_mers_type min_mer; // Souvadra's addition
     switch(op_) {
      case COUNT:
-      std::cout << "Counting Happening" << std::endl; // Souvadra's addition
+      // std::cout << "Counting Happening" << std::endl; // Souvadra's addition
       int mer_pos; //Souvadra's addition
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
+          //std::cout << "changed mer_str: " << mers->to_str() << ", rid: " << mers->get_rid() << std::endl; // Souvadra's addition
           mmf.select_minimizer(mers->to_str(), mers->get_rid());
           buf_mer_2[mmf.info_pos] = *mers;               
           while (!mmf.return_mer.empty()) {
