@@ -20,7 +20,6 @@
 #include <signal.h>
 #include <stdlib.h> // Souvadra's addition
 #include <stdint.h> // Souvadra's addition
-// #include "kvec.h"   // Souvadra's addition // don't need it actually, remove kvec.h later
 
 #include <cctype>
 #include <iostream>
