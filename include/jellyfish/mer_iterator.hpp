@@ -22,7 +22,10 @@ class mer_iterator : public std::iterator<std::input_iterator_tag,MerType> {
   MerType                     rcm_; // reverse complement mer
   unsigned int                filled_;
   const bool                  canonical_;
-  uint32_t                    read_number = 0;
+  uint32_t                    read_number = 0; //Souvadra's addition
+  uint64_t                    kmer_int[2] = {0,0}; // Souvadra's addition
+  uint64_t                    mask1 = (1ULL<<2 * m_.k()) - 1; // Souvadra's addition
+  uint64_t                    shift1 = 2 * (m_.k()-1); // Souvadra's addition
 public:
   typedef MerType      mer_type;
   typedef SequencePool sequence_parser_type;
@@ -48,7 +51,7 @@ public:
   bool operator!=(const mer_iterator& rhs) const { return job_ != rhs.job_; }
 
   operator void*() const { return (void*)job_; }
-  const mer_type& operator*() const { return !canonical_ || m_ < rcm_ ? m_ : rcm_; }
+  const mer_type& operator*() const { return !canonical_ || m_.get_kmer_int() < rcm_.get_kmer_int() ? m_ : rcm_; } // Souvadra's modification
   const mer_type* operator->() const { return &this->operator*(); }
   mer_iterator& operator++() {
     while(true) {
@@ -72,16 +75,24 @@ public:
             rcm_.shift_right(rcm_.complement(code));
           }
           filled_ = std::min(filled_ + 1, mer_dna::k());
+
+          kmer_int[0] = (kmer_int[0] << 2 | code) & mask1; // forward k-mer // Souvadra's addition
+          if (canonical_) kmer_int[1] = (kmer_int[1] >> 2) | (3ULL^code) << shift1; // reverse k-mer // Souvadra's addition
+
           if (filled_ == 1) read_number += 1; // need to send this signal to count_main.cc somehow to update "rid" variable
         } else
           filled_ = 0;
       } while(filled_ < m_.k() && cseq_ < (*job_)->end);
       if(filled_ >= m_.k())
       {
-        //std::cout << "Haha: " << m_.dummy_function("hello") << std::endl; // Souvadra's addition'
         m_.set_rid(read_number); // Souvadra's addition
-        if (canonical_) rcm_.set_rid(read_number);
-        //std::cout << m_.rid << std::endl; // Souvadra's addition
+        m_.set_kmer_int(kmer_int[0]); // Souvadra's addition
+        m_.set_strand(0); // Souvadra's addition
+        if (canonical_) { // Souvadra's addition
+          rcm_.set_rid(read_number); 
+          rcm_.set_kmer_int(kmer_int[1]);
+          rcm_.set_strand(1); 
+        }
         break;
       }
       

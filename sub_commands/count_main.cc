@@ -176,7 +176,7 @@ class minimizer_factory {
 private:
   int k, w;
   uint64_t shift1, mask;
-  uint64_t kmer[2] = {0,0}; // can potentially make it a single uint64_t variable from an array (hopefully that will be little faster)
+  //uint64_t kmer[2] = {0,0}; // is it required anymore??? 
   int i, j, l, buf_pos = 0;
   int kmer_span;
   mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
@@ -196,7 +196,9 @@ public:
     kmer_span = k; // Do I even need this variable anymore ???
     memset(buf, 0xff, w * 16);
   }
-
+  // old version of the code
+  #if 0
+  /*
   void minimizer_helper(int c) {
     new_min = false;
     mm128_t info = { UINT64_MAX, UINT64_MAX };
@@ -204,12 +206,9 @@ public:
       int z;
       kmer_span = l + 1 < k? l + 1 : k;
       kmer[0] = (kmer[0] << 2 | c) & mask;           // forward k-mer
-      // Reverse k-mer is being calculated via Jellyfish itself, hence skipping
-      // this step here in minimap2 inspired code
-      //kmer[1] = (kmer[1] >> 2) | (3ULL^c) << shift1; // reverse k-mer
-      
-      z = 0; // always keeping the first start assuming that Jellyfish is taking care of this part
-      //z = kmer[0] <= kmer[1]? 0 : 1; // strand // Souvadra: convert the < to <= to skip dealing 
+      kmer[1] = (kmer[1] >> 2) | (3ULL^c) << shift1; // reverse k-mer
+
+      z = kmer[0] <= kmer[1]? 0 : 1; // strand // Souvadra: convert the < to <= to skip dealing 
       //          with the situation where both the forward and the reverse k-mers are the same
       ++l;
       if (l >= k && kmer_span < 256) {
@@ -264,6 +263,62 @@ public:
       minimizer_helper(c);
     }
   }
+  */
+  #endif 
+
+  #if 1
+  // new version of this code
+  void minimizer_helper(uint64_t kmer_int, int z) {
+    new_min = false;
+    mm128_t info = { UINT64_MAX, UINT64_MAX };
+    ++l;
+
+    if (l >= k && kmer_span < 256) {
+      info.x = hash64(kmer_int, mask) << 8 | kmer_span;
+			info.y = (uint64_t)rid<<32 | (uint32_t)i<<1 | z;
+    }
+
+    buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
+    info_pos = buf_pos;
+    if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
+      for (j = buf_pos + 1; j < w; ++j)
+        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(j);
+      for (j = 0; j < buf_pos; ++j)
+        if (min.x == buf[j].x && buf[j].y != min.y) return_mer.push_back(j);
+		}
+    if (info.x <= min.x) { // a new minimum; then write the old min
+      new_min = true;
+      if (l >= w + k && min.x != UINT64_MAX) return_mer.push_back(-1); // -1 signifies push the old min_mer to the ary_ hash function
+      min = info, min_pos = buf_pos;
+    } else if (buf_pos == min_pos) { // old min has moved outside the window
+      new_min = true;
+      if (l >= w + k - 1 && min.x != UINT64_MAX) return_mer.push_back(-1);
+      for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
+        if (min.x >= buf[j].x) min = buf[j], min_pos = j; //  >= is important s.t. min is always the closest k-mer
+      for (j = 0; j <= buf_pos; ++j)
+        if (min.x >= buf[j].x) min = buf[j], min_pos = j; 
+      if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
+        for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
+          if (min.x == buf[j].x && min.y != buf[j].y) return_mer.push_back(j);
+        for (j = 0; j <= buf_pos; ++j)
+          if (min.x == buf[j].x && min.y != buf[j].y) return_mer.push_back(j);
+			}
+    }
+    if (++buf_pos == w) buf_pos = 0;
+  }
+
+  void select_minimizer(uint64_t kmer_int, uint32_t rid, int strand) {
+    if (this->rid != rid) {
+        this->rid = rid;
+        if (rid != 1) return_mer.push_back(-1); // -1 signifies me to push the min_mer stored in the count function 
+        min = { UINT64_MAX, UINT64_MAX };
+        this->l = this->k - 1; // Souvadra: It is correct ???
+        minimizer_helper(kmer_int, strand);
+    } else {
+      minimizer_helper(kmer_int, strand);
+    }
+  }
+  #endif 
 };
 // ****************************** Souvadra's addition ends ************************* //
 
@@ -294,12 +349,12 @@ public:
     star_mers_type min_mer; // Souvadra's addition
     switch(op_) {
      case COUNT:
-      // std::cout << "Counting Happening" << std::endl; // Souvadra's addition
+      std::cout << "Counting Happening" << std::endl; // Souvadra's addition
       int mer_pos; //Souvadra's addition
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
           //std::cout << "changed mer_str: " << mers->to_str() << ", rid: " << mers->get_rid() << std::endl; // Souvadra's addition
-          mmf.select_minimizer(mers->to_str(), mers->get_rid());
+          mmf.select_minimizer(mers->get_kmer_int(), mers->get_rid(), mers->get_strand());
           buf_mer_2[mmf.info_pos] = *mers;               
           while (!mmf.return_mer.empty()) {
             mer_pos = mmf.return_mer.back();
