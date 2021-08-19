@@ -133,6 +133,8 @@ struct filter_bf : public filter {
 };
 
 // ****************************** Souvadra's addition starts ************************* //
+#if 0
+/*
 unsigned char seq_nt4_table[256] = {
 	0, 1, 2, 3,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
 	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
@@ -151,7 +153,8 @@ unsigned char seq_nt4_table[256] = {
 	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
 	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4
 };
-
+*/
+#endif 
 typedef struct { uint64_t x, y; } mm128_t;
 typedef struct { size_t n, m; mm128_t *a; } mm128_v;
 
@@ -349,7 +352,7 @@ public:
     star_mers_type min_mer; // Souvadra's addition
     switch(op_) {
      case COUNT:
-      std::cout << "Counting Happening" << std::endl; // Souvadra's addition
+      //std::cout << "Counting Happening" << std::endl; // Souvadra's addition
       int mer_pos; //Souvadra's addition
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
