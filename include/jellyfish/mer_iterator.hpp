@@ -64,11 +64,13 @@ public:
           return *this;
         }
         cseq_   = (*job_)->start;
+        std::cout << "line 67 @mer_iterator.hpp " << std::endl;
         filled_ = 0;
       }
 
       do {
         int code = m_.code(*cseq_++);
+        //std::cout << code << std::endl; // Souvadra's addition
         if(code >= 0) {
           m_.shift_left(code);
           if(canonical_){
@@ -78,11 +80,16 @@ public:
 
           kmer_int[0] = (kmer_int[0] << 2 | code) & mask1; // forward k-mer // Souvadra's addition
           if (canonical_) kmer_int[1] = (kmer_int[1] >> 2) | (3ULL^code) << shift1; // reverse k-mer // Souvadra's addition
-
-          if (filled_ == 1) read_number += 1; // need to send this signal to count_main.cc somehow to update "rid" variable
-        } else
-          filled_ = 0;
+          //std::cout << filled_ << std::endl; 
+          //if (filled_ == 1) std::cout << "filled is 1" << std::endl; // Souvadra's addition
+          //if (filled_ == 1) read_number += 1; // need to send this signal to count_main.cc somehow to update "rid" variable
+        } else {
+            std::cout << "line 85 @mer_iterator.hpp" << std::endl;
+            read_number += 1; // Souvadra's addition
+            filled_ = 0;
+        }
       } while(filled_ < m_.k() && cseq_ < (*job_)->end);
+      
       if(filled_ >= m_.k())
       {
         m_.set_rid(read_number); // Souvadra's addition

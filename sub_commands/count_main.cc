@@ -152,7 +152,7 @@ typedef struct { // a simplified version of kdq
 	int a[32];
 } tiny_queue_t;
 
-#define star_mers_type jellyfish::mer_dna_ns::mer_base_static<long unsigned int, 0>
+#define star_mers_type jellyfish::mer_dna_ns::mer_base_static<long unsigned int, 0> 
 class minimizer_factory {
 private:
   int k, w;
@@ -166,7 +166,7 @@ public:
   bool new_min = false;
   int info_pos;
   std::vector<int> return_mer; // Souvadra's  addition
-  uint32_t rid = 0;
+  uint32_t rid = UINT32_MAX;
 
   minimizer_factory(int k, int w) {
     assert((w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
@@ -179,7 +179,6 @@ public:
   }
 
   #if 1
-  // new version of this code
   void minimizer_helper(uint64_t kmer_int, int z) {
     new_min = false;
     mm128_t info = { UINT64_MAX, UINT64_MAX };
@@ -192,8 +191,7 @@ public:
 
     buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
     info_pos = buf_pos;
-
-
+    #if 0
     // if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
     //   for (j = buf_pos + 1; j < w; ++j)
     //   {
@@ -212,14 +210,13 @@ public:
     //     }
     //   }
 		// }
-
+    #endif 
     // KUSHAGRA's ADDITION TO MAKE THE ROBUST WINNOWING POSSIBLE:
-
 
     // This if condition is contradictory, it allows rightmost kmer to become the minimizer in the first window, but after that it
     // allows new kmers with same value as current minimimzer to be added as minimizer. To  change it to robust winnowing, need to
     // break these 2 conditions apart
-
+    #if 0
     // if (info.x <= min.x) { // a new minimum; then write the old min
     //   new_min = true;
     //   if (l >= w + k && min.x != UINT64_MAX) 
@@ -232,7 +229,7 @@ public:
     //   } // -1 signifies push the old min_mer to the ary_ hash function
     //   min = info, min_pos = buf_pos;
     // }
-
+    #endif
     int if_flag = 0;
 
     if (info.x <= min.x && l<= w+k-1) // get right most in first window
@@ -270,6 +267,7 @@ public:
       for (j = 0; j <= buf_pos; ++j)
         if (buf[j].x <= min.x) min = buf[j], min_pos = j; 
 
+      #if 0
       // if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
 
       //   for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
@@ -290,6 +288,7 @@ public:
       //   }
           
 			// }
+      #endif
     }
     if (++buf_pos == w) buf_pos = 0;
   }
@@ -298,15 +297,9 @@ public:
     if (this->rid != rid) {
         // memset(buf, 0xff, w * 16);
         this->rid = rid;
-        if (rid != 1) 
+        if (rid != 0) 
         {
-          // std::cout << "PUSHING READ CHANGE MINIMIZER" << std::endl;
-          // std::cout << min.x << " " << min.y << " " << min_pos << " " << buf_pos << " " << l << std::endl;
-          // std::cout << std::endl;
-
           return_mer.push_back(-1); // -1 signifies me to push the min_mer stored in the count function 
-          // std::cout << min.x << std::endl;
-          // memset(buf, 0xff, w * 16);
         }
         min = { UINT64_MAX, UINT64_MAX };
         this->l = this->k - 1; 
@@ -341,52 +334,52 @@ public:
   virtual void start(int thid) {
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
-    minimizer_factory mmf(mers->k(), mers->k()); // w value hardcoded, NEET TO CHANGE
+    int k = mers->k();
+    int w = mers->k(); // this is  hardcoded for now, will need to change it later <-- Souvadra
+    minimizer_factory mmf(k, w); // w value hardcoded, NEET TO CHANGE
     star_mers_type buf_mer_2[256]; // Souvadra's addition
     star_mers_type min_mer; // Souvadra's addition
     bool min_initialized = 0; // Souvadra's addition
     switch(op_) {
      case COUNT:
-      // std::cout << "Counting Happening" << std::endl; // Souvadra's addition
+      std::cout << "Counting Happening" << std::endl; // Souvadra's addition
       int mer_pos; //Souvadra's addition
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
-          //std::cout << "min_mer rid: " << min_mer.get_rid() << ", seq: " << min_mer.to_str() << std::endl;
-          //std::cout << "changed mer_str: " << mers->to_str() << ", rid: " << mers->get_rid() << std::endl; // Souvadra's addition
           mmf.select_minimizer(mers->get_kmer_int(), mers->get_rid(), mers->get_strand());
-          buf_mer_2[mmf.info_pos] = *mers;               
+          std::cout << mers->to_str() << " -- " << mers->get_rid() << " -- " << mers->get_kmer_int() << std::endl; // Souvadra's addition
+          buf_mer_2[mmf.info_pos] = *mers; 
+          buf_mer_2[mmf.info_pos].set_kmer_int(mers->get_kmer_int()); // Is it required ???
+          buf_mer_2[mmf.info_pos].set_rid(mers->get_rid()); // Is it required ???    
           while (!mmf.return_mer.empty()) {
             mer_pos = mmf.return_mer.back();
             if (mer_pos == -1) {
+              //std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_kmer_int() << std::endl;
               if (min_initialized == 1) ary_.add(min_mer, 1);
-              //if (min_initialized == 1) std::cout << "line 316: " << min_mer.to_str() << std::endl;
             } 
             else {
+              //std::cout << buf_mer_2[mer_pos].to_str() << " -- " << buf_mer_2[mer_pos].get_rid() << " -- " << buf_mer_2[mer_pos].get_kmer_int() << std::endl;
               ary_.add((buf_mer_2[mer_pos]), 1); 
-              //std::cout << "line 320: " << buf_mer_2[mer_pos].to_str() << std::endl;
             }
             mmf.return_mer.pop_back();
           }
           if (mmf.new_min) { 
             min_mer = buf_mer_2[mmf.min_pos]; 
+            min_mer.set_kmer_int(buf_mer_2[mmf.min_pos].get_kmer_int()); // Is it required ???
+            min_mer.set_rid(buf_mer_2[mmf.min_pos].get_rid()); // Is it required ???
             min_initialized = 1; 
           }
         }
         ++count;
       }
-      //if (min_initialized == 1) std::cout << "line 328: " << min_mer.to_str() << std::endl;
       if (min_initialized == 1) 
       {
-        // std::cout << "PUSHING END OF FILE MINIMIZER" << std::endl;
-        // std::cout << min_mer << std::endl;
-        // std::cout << std::endl;
-
+        //std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_kmer_int() << std::endl;
         ary_.add(min_mer, 1); 
       }// basically the last min_mer left
       break;
 
     case PRIME:
-      // std::cout << "Priming Happening" << std::endl; // Souvadra's addition
       for( ; mers; ++mers) {
         if((*filter_)(*mers))
           ary_.set(*mers);
@@ -395,7 +388,6 @@ public:
       break;
 
     case UPDATE:
-      // std::cout << "Update Happning" << std::endl; // Souvadra's addition
       mer_dna tmp;
       for( ; mers; ++mers) {
         if((*filter_)(*mers))
