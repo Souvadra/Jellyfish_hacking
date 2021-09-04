@@ -256,7 +256,9 @@ public:
   virtual void start(int thid) {
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
-    minimizer_factory mmf(mers->k(),1); // w value hardcoded, NEET TO CHANGE
+    int k = mers->k();
+    int w = mers->k();
+    minimizer_factory mmf(k,w); // w value hardcoded, NEET TO CHANGE
     star_mers_type buf_mer_2[256]; // Souvadra's addition
     star_mers_type min_mer; // Souvadra's addition
     bool min_initialized = 0; // Souvadra's addition
