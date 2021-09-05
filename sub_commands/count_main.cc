@@ -324,7 +324,7 @@ public:
   mer_counter_base(int nb_threads, mer_hash& ary, stream_manager_type& streams,
                    OPERATION op, filter* filter = new struct filter)
     : ary_(ary)
-    , parser_(mer_dna::k(), streams.nb_streams(), 3 * nb_threads, 4096, streams)
+    , parser_(mer_dna::k(), streams.nb_streams(), 3 * nb_threads, 16, streams) // Souvadra changed 4096 --> N = 150
     , filter_(filter)
     , op_(op)
   {
@@ -336,7 +336,7 @@ public:
     MerIteratorType mers(parser_, args.canonical_flag);
     int k = mers->k();
     int w = mers->k(); // this is  hardcoded for now, will need to change it later <-- Souvadra
-    minimizer_factory mmf(k, w); // w value hardcoded, NEET TO CHANGE
+    minimizer_factory mmf(k, w);
     star_mers_type buf_mer_2[256]; // Souvadra's addition
     star_mers_type min_mer; // Souvadra's addition
     bool min_initialized = 0; // Souvadra's addition
@@ -347,7 +347,7 @@ public:
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
           mmf.select_minimizer(mers->get_kmer_int(), mers->get_rid(), mers->get_strand());
-          std::cout << mers->to_str() << " -- " << mers->get_rid() << " -- " << mers->get_kmer_int() << std::endl; // Souvadra's addition
+          std::cout << mers->to_str() << " -- " << mers->get_rid() << std::endl; // Souvadra's addition
           buf_mer_2[mmf.info_pos] = *mers; 
           buf_mer_2[mmf.info_pos].set_kmer_int(mers->get_kmer_int()); // Is it required ???
           buf_mer_2[mmf.info_pos].set_rid(mers->get_rid()); // Is it required ???    

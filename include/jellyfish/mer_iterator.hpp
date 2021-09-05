@@ -56,6 +56,7 @@ public:
   mer_iterator& operator++() {
     while(true) {
       while(cseq_ == (*job_)->end) {
+        //std::cout << "line 59 @mer_iterator.hpp" <<std::endl; // Souvadra's addition
         job_->next();
         if(job_->is_empty()) {
           delete job_;
@@ -64,6 +65,7 @@ public:
           return *this;
         }
         cseq_   = (*job_)->start;
+        std::cout << cseq_ << std::endl; // Souvadra's addition
         std::cout << "line 67 @mer_iterator.hpp " << std::endl;
         filled_ = 0;
       }
@@ -80,12 +82,9 @@ public:
 
           kmer_int[0] = (kmer_int[0] << 2 | code) & mask1; // forward k-mer // Souvadra's addition
           if (canonical_) kmer_int[1] = (kmer_int[1] >> 2) | (3ULL^code) << shift1; // reverse k-mer // Souvadra's addition
-          //std::cout << filled_ << std::endl; 
-          //if (filled_ == 1) std::cout << "filled is 1" << std::endl; // Souvadra's addition
-          //if (filled_ == 1) read_number += 1; // need to send this signal to count_main.cc somehow to update "rid" variable
         } else {
             std::cout << "line 85 @mer_iterator.hpp" << std::endl;
-            read_number += 1; // Souvadra's addition
+            read_number += 1; // // need to send this signal to count_main.cc somehow to update "rid" variable
             filled_ = 0;
         }
       } while(filled_ < m_.k() && cseq_ < (*job_)->end);

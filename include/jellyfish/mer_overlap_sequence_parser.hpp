@@ -51,7 +51,7 @@ class mer_overlap_sequence_parser : public jellyfish::cooperative_pool2<mer_over
   size_t                   reads_read_; // nb of reads read
 
 public:
-  /// Max_producers is the maximum number of concurrent threads than
+  /// Max_producers is the maximum number of concurrent threads that
   /// can produce data simultaneously. Size is the number of buffer to
   /// keep around. It should be larger than the number of thread
   /// expected to read from this class. buf_size is the size of each
@@ -69,6 +69,7 @@ public:
     streams_iterator_(streams),
     files_read_(0), reads_read_(0)
   {
+    std::cout << mer_len << " -- " << max_producers << " -- " << size << " -- " << buf_size << std::endl; 
     for(sequence_ptr* it = super::element_begin(); it != super::element_end(); ++it)
       it->start = it->end = buffer + (it - super::element_begin()) * buf_size;
     for(uint32_t i = 0; i < max_producers; ++i) {
@@ -90,6 +91,7 @@ public:
 
     switch(st.type) {
     case FASTA_TYPE:
+      //std::cout << "line 93 @mer_overlap_sequence_parser.hpp " << std::endl; 
       read_fasta(st, buff);
       break;
     case FASTQ_TYPE:
