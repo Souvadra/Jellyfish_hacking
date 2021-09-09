@@ -1,15 +1,12 @@
 /*  This file is part of Jellyfish.
-
     Jellyfish is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-
     Jellyfish is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
-
     You should have received a copy of the GNU General Public License
     along with Jellyfish.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -137,6 +134,8 @@ typedef struct { uint64_t x, y; } mm128_t;
 typedef struct { size_t n, m; mm128_t *a; } mm128_v;
 
 static inline uint64_t hash64(uint64_t key, uint64_t mask) {
+
+  // std::cout << "INPUT key is: " << key << std::endl;
 	key = (~key + (key << 21)) & mask; // key = (key << 21) - key - 1;
 	key = key ^ key >> 24;
 	key = ((key + (key << 3)) + (key << 8)) & mask; // key * 265
@@ -144,6 +143,8 @@ static inline uint64_t hash64(uint64_t key, uint64_t mask) {
 	key = ((key + (key << 2)) + (key << 4)) & mask; // key * 21
 	key = key ^ key >> 28;
 	key = (key + (key << 31)) & mask;
+  // std::cout << "OUTPUT key is: " << key << std::endl;
+  // std::cout << std::endl;
 	return key;
 }
 
@@ -178,6 +179,8 @@ public:
     memset(buf, 0xff, w * 16);
   }
 
+  // THIS IS KUSHAGRA'S VERSION OF ALL MINIMIZERS AS ON SEP 9
+
   #if 1
   void minimizer_helper(uint64_t kmer_int, int z) {
     new_min = false;
@@ -185,12 +188,109 @@ public:
     ++l;
 
     if (l >= k && kmer_span < 256) {
+      // std::cout << "KMER INT: " << kmer_int << std::endl;
+      // std::cout << "HASHER: " << hash64(kmer_int, mask) << std::endl;
+
       info.x = hash64(kmer_int, mask) << 8 | kmer_span;
 			info.y = (uint64_t)rid<<32 | (uint32_t)i<<1 | z;
+
+      // std::cout << "INFO: " << info.x << std::endl;
     }
 
     buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
     info_pos = buf_pos;
+
+    #if 1
+    if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
+      for (j = buf_pos; j < w; ++j)
+      {
+        if (min.x == buf[j].x && j!= min_pos)
+        {
+          // std::cout << "LOOPING IN FIRST WINDOW " << j << " " << buf[j].x << " " << std::endl;
+          return_mer.push_back(j);
+        }
+      }
+      for (j = 0; j < buf_pos; ++j)
+      {
+        if (min.x == buf[j].x && j!= min_pos)
+        {
+          // std::cout << "LOOPING IN FIRST WINDOW " << j << " " << buf[j].x << " " << std::endl;
+          return_mer.push_back(j);
+        }
+      }
+		}
+
+    if (info.x <= min.x) { // a new minimum; then write the old min
+      new_min = true;
+      if (l >= w + k && min.x != UINT64_MAX) 
+      {
+        // std::cout << "NEW MINIMIZER " << min.x << " " << std::endl;
+        return_mer.push_back(-1);
+      } // -1 signifies push the old min_mer to the ary_ hash function
+      
+
+      // DELETED THIS: I HAD A WRONG LOGIC THAT I NEED TO LOOP OVER AGAIN. NOT REQUIRED
+
+      // if (l >= w + k && min.x != UINT64_MAX) { // write identical k-mers
+      //   for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
+      //   {
+      //     if (min.x == buf[j].x && min_pos!= j)
+      //     {
+      //       std::cout << "LOOPING IN NEW MINIMIZER " << buf[j].x << " " << std::endl;
+      //       return_mer.push_back(j);
+      //     }
+      //   }
+      //   for (j = 0; j <= buf_pos; ++j)
+      //   {
+      //     if (min.x == buf[j].x && min_pos!= j)
+      //     {
+      //       std::cout << "LOOPING IN NEW MINIMIZER " << buf[j].x << " " << std::endl;
+      //       return_mer.push_back(j);
+      //     }
+      //   }  
+			// }
+
+      min = info, min_pos = buf_pos;
+    }
+
+    else if (buf_pos == min_pos) { // old min has moved outside the window
+      new_min = true;
+      if (l >= w + k - 1 && min.x != UINT64_MAX)
+      {
+        // std::cout << "OUT OF WINDOW MINIMIZER " << min.x << " " << std::endl;
+        return_mer.push_back(-1);
+      }
+      for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
+        if (min.x >= buf[j].x) min = buf[j], min_pos = j; //  >= is important s.t. min is always the closest k-mer
+      for (j = 0; j <= buf_pos; ++j)
+        if (min.x >= buf[j].x) min = buf[j], min_pos = j; 
+
+      if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
+
+        for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
+        {
+          if (min.x == buf[j].x && min_pos!=j)
+          {
+            // std::cout << "LOOPING IN OUT OF WINDOW MINIMIZER " << buf[j].x << " " << std::endl;
+            return_mer.push_back(j);
+          }
+        }
+        for (j = 0; j <= buf_pos; ++j)
+        {
+          if (min.x == buf[j].x && min_pos!=j)
+          {
+            // std::cout << "LOOPING IN OUT OF WINDOW MINIMIZER " << buf[j].x << " " << std::endl;
+            return_mer.push_back(j);
+          }
+        }  
+			}
+    }
+    #endif
+
+
+
+  // THIS IS KUSHAGRA'S VERSION OF ROBUST WINNOWING AS ON SEP 4
+
     #if 0
     // if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
     //   for (j = buf_pos + 1; j < w; ++j)
@@ -210,13 +310,13 @@ public:
     //     }
     //   }
 		// }
-    #endif 
+
     // KUSHAGRA's ADDITION TO MAKE THE ROBUST WINNOWING POSSIBLE:
 
     // This if condition is contradictory, it allows rightmost kmer to become the minimizer in the first window, but after that it
     // allows new kmers with same value as current minimimzer to be added as minimizer. To  change it to robust winnowing, need to
     // break these 2 conditions apart
-    #if 0
+
     // if (info.x <= min.x) { // a new minimum; then write the old min
     //   new_min = true;
     //   if (l >= w + k && min.x != UINT64_MAX) 
@@ -229,7 +329,7 @@ public:
     //   } // -1 signifies push the old min_mer to the ary_ hash function
     //   min = info, min_pos = buf_pos;
     // }
-    #endif
+
     int if_flag = 0;
 
     if (info.x <= min.x && l<= w+k-1) // get right most in first window
@@ -267,7 +367,6 @@ public:
       for (j = 0; j <= buf_pos; ++j)
         if (buf[j].x <= min.x) min = buf[j], min_pos = j; 
 
-      #if 0
       // if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
 
       //   for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
@@ -288,8 +387,9 @@ public:
       //   }
           
 			// }
-      #endif
     }
+    #endif
+
     if (++buf_pos == w) buf_pos = 0;
   }
 
@@ -324,7 +424,7 @@ public:
   mer_counter_base(int nb_threads, mer_hash& ary, stream_manager_type& streams,
                    OPERATION op, filter* filter = new struct filter)
     : ary_(ary)
-    , parser_(mer_dna::k(), streams.nb_streams(), 3 * nb_threads, 16, streams) // Souvadra changed 4096 --> N = 150
+    , parser_(mer_dna::k(), streams.nb_streams(), 3 * nb_threads, 4096, streams)
     , filter_(filter)
     , op_(op)
   {
@@ -336,18 +436,18 @@ public:
     MerIteratorType mers(parser_, args.canonical_flag);
     int k = mers->k();
     int w = mers->k(); // this is  hardcoded for now, will need to change it later <-- Souvadra
-    minimizer_factory mmf(k, w);
+    minimizer_factory mmf(k, w); // w value hardcoded, NEET TO CHANGE
     star_mers_type buf_mer_2[256]; // Souvadra's addition
     star_mers_type min_mer; // Souvadra's addition
     bool min_initialized = 0; // Souvadra's addition
     switch(op_) {
      case COUNT:
-      std::cout << "Counting Happening" << std::endl; // Souvadra's addition
+      // std::cout << "Counting Happening" << std::endl; // Souvadra's addition
       int mer_pos; //Souvadra's addition
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
           mmf.select_minimizer(mers->get_kmer_int(), mers->get_rid(), mers->get_strand());
-          std::cout << mers->to_str() << " -- " << mers->get_rid() << std::endl; // Souvadra's addition
+          // std::cout << mers->to_str() << " -- " << mers->get_rid() << " -- " << mers->get_kmer_int() << std::endl; // Souvadra's addition
           buf_mer_2[mmf.info_pos] = *mers; 
           buf_mer_2[mmf.info_pos].set_kmer_int(mers->get_kmer_int()); // Is it required ???
           buf_mer_2[mmf.info_pos].set_rid(mers->get_rid()); // Is it required ???    
