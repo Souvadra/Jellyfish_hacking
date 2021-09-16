@@ -157,8 +157,8 @@ public:
     switch(op_) {
      case COUNT:
       std::cout << "Counting Happening" << std::endl; // Souvadra's addition
-      #if 0
-      std::cout << "k-emr size:" << mers->k() << std::endl; // Souvadra's addition
+      #if 1
+      //std::cout << "k-mer size:" << mers->k() << std::endl; // Souvadra's addition
       //int w = mers->k();
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
@@ -172,7 +172,7 @@ public:
         ++count;
       }
       #endif 
-      #if 1
+      #if 0
       std::cout << "k-mer size: " << mers->k() << std::endl; // Souvadra's addition
       for( ; mers; ++mers) {
         if((*filter_)(*mers)) {
@@ -315,12 +315,12 @@ int count_main(int argc, char *argv[])
   if(args.if_given) {
     stream_manager_type streams(args.Files_arg);
     streams.paths(args.if_arg.begin(), args.if_arg.end());
-    std::cout << "count_main.cc @line 292" << std::endl; // Souvadra's addition
+    //std::cout << "count_main.cc @line 292" << std::endl; // Souvadra's addition
     mer_counter counter(args.threads_arg, ary, streams, PRIME);
     counter.exec_join(args.threads_arg);
     do_op = UPDATE;
   }
-  std::cout << "count_main.cc @line 299" << std::endl;
+  //std::cout << "count_main.cc @line 299" << std::endl;
   // Iterators to the multi pipe paths. If no generator manager,
   // generate an empty range.
   auto pipes_begin = generator_manager.get() ? generator_manager->pipes().begin() : args.file_arg.end();
