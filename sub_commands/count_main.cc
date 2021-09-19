@@ -227,29 +227,6 @@ public:
         // std::cout << "NEW MINIMIZER " << min.x << " " << std::endl;
         return_mer.push_back(-1);
       } // -1 signifies push the old min_mer to the ary_ hash function
-      
-
-      // DELETED THIS: I HAD A WRONG LOGIC THAT I NEED TO LOOP OVER AGAIN. NOT REQUIRED
-
-      // if (l >= w + k && min.x != UINT64_MAX) { // write identical k-mers
-      //   for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
-      //   {
-      //     if (min.x == buf[j].x && min_pos!= j)
-      //     {
-      //       std::cout << "LOOPING IN NEW MINIMIZER " << buf[j].x << " " << std::endl;
-      //       return_mer.push_back(j);
-      //     }
-      //   }
-      //   for (j = 0; j <= buf_pos; ++j)
-      //   {
-      //     if (min.x == buf[j].x && min_pos!= j)
-      //     {
-      //       std::cout << "LOOPING IN NEW MINIMIZER " << buf[j].x << " " << std::endl;
-      //       return_mer.push_back(j);
-      //     }
-      //   }  
-			// }
-
       min = info, min_pos = buf_pos;
     }
 
@@ -290,46 +267,7 @@ public:
 
 
   // THIS IS KUSHAGRA'S VERSION OF ROBUST WINNOWING AS ON SEP 4
-
     #if 0
-    // if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
-    //   for (j = buf_pos + 1; j < w; ++j)
-    //   {
-    //     if (min.x == buf[j].x && buf[j].y != min.y)
-    //     {
-    //       std::cout << "IN IF1 LOOP1" << std::endl;
-    //       return_mer.push_back(j);
-    //     }
-    //   }
-    //   for (j = 0; j < buf_pos; ++j)
-    //   {
-    //     if (min.x == buf[j].x && buf[j].y != min.y)
-    //     {
-    //       std::cout << "IN IF1 LOOP2" << std::endl;
-    //       return_mer.push_back(j);
-    //     }
-    //   }
-		// }
-
-    // KUSHAGRA's ADDITION TO MAKE THE ROBUST WINNOWING POSSIBLE:
-
-    // This if condition is contradictory, it allows rightmost kmer to become the minimizer in the first window, but after that it
-    // allows new kmers with same value as current minimimzer to be added as minimizer. To  change it to robust winnowing, need to
-    // break these 2 conditions apart
-
-    // if (info.x <= min.x) { // a new minimum; then write the old min
-    //   new_min = true;
-    //   if (l >= w + k && min.x != UINT64_MAX) 
-    //   {
-    //     std::cout << "NEW MINIMIZER" << std::endl;
-    //     std::cout << min.x << " " << min.y << " " << min_pos << " " << buf_pos << " " << l << std::endl;
-    //     std::cout << std::endl;
-
-    //     return_mer.push_back(-1);
-    //   } // -1 signifies push the old min_mer to the ary_ hash function
-    //   min = info, min_pos = buf_pos;
-    // }
-
     int if_flag = 0;
 
     if (info.x <= min.x && l<= w+k-1) // get right most in first window
@@ -366,27 +304,6 @@ public:
         if (buf[j].x <= min.x) min = buf[j], min_pos = j; //  >= is important s.t. min is always the closest k-mer
       for (j = 0; j <= buf_pos; ++j)
         if (buf[j].x <= min.x) min = buf[j], min_pos = j; 
-
-      // if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
-
-      //   for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
-      //   {
-      //     if (min.x == buf[j].x && min.y != buf[j].y)
-      //     {
-      //       std::cout << "IN ELSE IF LOOP1" << std::endl;
-      //       return_mer.push_back(j);
-      //     }
-      //   }
-      //   for (j = 0; j <= buf_pos; ++j)
-      //   {
-      //     if (min.x == buf[j].x && min.y != buf[j].y)
-      //     {
-      //       std::cout << "IN ELSE IF LOOP2" << std::endl;
-      //       return_mer.push_back(j);
-      //     }
-      //   }
-          
-			// }
     }
     #endif
 
