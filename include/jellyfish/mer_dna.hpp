@@ -146,6 +146,7 @@ public:
   uint32_t rid; // Souvadra's addition
   uint64_t kmer_int; // Souvadra's addition
   int strand; // Souvadra's addition
+  bool should_skip; // Souvadra's addition
   typedef typename mer_dna_traits<derived>::base_type base_type;
 
   enum { CODE_A, CODE_C, CODE_G, CODE_T,
@@ -473,7 +474,6 @@ public:
   void set_rid(uint32_t rid_val) {
     this->rid = rid_val;
   }
-
   uint32_t get_rid() const {
     return this->rid;
   }
@@ -481,7 +481,6 @@ public:
   void set_kmer_int(uint64_t kmer_int_val) {
     this->kmer_int = kmer_int_val;
   }
-
   uint64_t get_kmer_int() const {
     return this->kmer_int;
   }
@@ -489,9 +488,15 @@ public:
   void set_strand(int z) {
     this->strand  = z;
   }
-
   int get_strand() const {
     return this->strand;
+  }
+
+  void set_skip(bool verdict) {
+    this->should_skip  = verdict;
+  }
+  int get_skip() const {
+    return this->should_skip;
   }
   // -------------------------------------------------
 

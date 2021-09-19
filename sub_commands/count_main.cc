@@ -424,7 +424,7 @@ public:
   mer_counter_base(int nb_threads, mer_hash& ary, stream_manager_type& streams,
                    OPERATION op, filter* filter = new struct filter)
     : ary_(ary)
-    , parser_(mer_dna::k(), streams.nb_streams(), 3 * nb_threads, 4096, streams)
+    , parser_(mer_dna::k()+mer_dna::k()-1, streams.nb_streams(), 3 * nb_threads, 16, streams)
     , filter_(filter)
     , op_(op)
   {
@@ -446,6 +446,7 @@ public:
       int mer_pos; //Souvadra's addition
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
+          std::cout << mers->get_skip() << std::endl; 
           mmf.select_minimizer(mers->get_kmer_int(), mers->get_rid(), mers->get_strand());
           // std::cout << mers->to_str() << " -- " << mers->get_rid() << " -- " << mers->get_kmer_int() << std::endl; // Souvadra's addition
           buf_mer_2[mmf.info_pos] = *mers; 

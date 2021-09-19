@@ -26,6 +26,7 @@ class mer_iterator : public std::iterator<std::input_iterator_tag,MerType> {
   uint64_t                    kmer_int[2] = {0,0}; // Souvadra's addition
   uint64_t                    mask1 = (1ULL<<2 * m_.k()) - 1; // Souvadra's addition
   uint64_t                    shift1 = 2 * (m_.k()-1); // Souvadra's addition
+  bool                        should_skip = false; // Souvadra's addition 
 public:
   typedef MerType      mer_type;
   typedef SequencePool sequence_parser_type;
@@ -65,8 +66,9 @@ public:
           return *this;
         }
         cseq_   = (*job_)->start;
-        std::cout << cseq_ << std::endl; // Souvadra's addition
-        std::cout << "line 67 @mer_iterator.hpp " << std::endl;
+        //std::cout << cseq_ << std::endl; // Souvadra's addition
+        //std::cout << "line 67 @mer_iterator.hpp " << std::endl;
+        should_skip = true; // Souvadra's addition
         filled_ = 0;
       }
 
@@ -75,6 +77,8 @@ public:
         //std::cout << code << std::endl; // Souvadra's addition
         if(code >= 0) {
           m_.shift_left(code);
+          //std::cout << "filled = " << filled_ << ";  ";
+          //if (filled_ >= m_.k()-1) std::cout << m_ << std::endl; // Souvadra's addition
           if(canonical_){
             rcm_.shift_right(rcm_.complement(code));
           }
@@ -83,7 +87,8 @@ public:
           kmer_int[0] = (kmer_int[0] << 2 | code) & mask1; // forward k-mer // Souvadra's addition
           if (canonical_) kmer_int[1] = (kmer_int[1] >> 2) | (3ULL^code) << shift1; // reverse k-mer // Souvadra's addition
         } else {
-            std::cout << "line 85 @mer_iterator.hpp" << std::endl;
+            //std::cout << "line 85 @mer_iterator.hpp" << std::endl;
+            should_skip = false;
             read_number += 1; // // need to send this signal to count_main.cc somehow to update "rid" variable
             filled_ = 0;
         }
@@ -91,6 +96,10 @@ public:
       
       if(filled_ >= m_.k())
       {
+        if (should_skip == true) std::cout << "should skip" << "  --> "; // Just to check <-- Souvadra
+        m_.set_skip(should_skip);
+        should_skip = false;
+        std::cout << m_ << std::endl;
         m_.set_rid(read_number); // Souvadra's addition
         m_.set_kmer_int(kmer_int[0]); // Souvadra's addition
         m_.set_strand(0); // Souvadra's addition
