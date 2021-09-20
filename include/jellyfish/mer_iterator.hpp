@@ -66,7 +66,7 @@ public:
           return *this;
         }
         cseq_   = (*job_)->start;
-        //std::cout << cseq_ << std::endl; // Souvadra's addition
+        std::cout << cseq_ << std::endl; // Souvadra's addition
         //std::cout << "line 67 @mer_iterator.hpp " << std::endl;
         should_skip = true; // Souvadra's addition
         filled_ = 0;
@@ -96,10 +96,10 @@ public:
       
       if(filled_ >= m_.k())
       {
-        if (should_skip == true) std::cout << "should skip" << "  --> "; // Just to check <-- Souvadra
+        //if (should_skip == true) std::cout << "should skip" << "  --> "; // Just to check <-- Souvadra
         m_.set_skip(should_skip);
         should_skip = false;
-        std::cout << m_ << std::endl;
+        //std::cout << m_ << std::endl;
         m_.set_rid(read_number); // Souvadra's addition
         m_.set_kmer_int(kmer_int[0]); // Souvadra's addition
         m_.set_strand(0); // Souvadra's addition

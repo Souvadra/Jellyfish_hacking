@@ -179,9 +179,6 @@ public:
     memset(buf, 0xff, w * 16);
   }
 
-  // THIS IS KUSHAGRA'S VERSION OF ALL MINIMIZERS AS ON SEP 9
-
-  #if 1
   void minimizer_helper(uint64_t kmer_int, int z) {
     new_min = false;
     mm128_t info = { UINT64_MAX, UINT64_MAX };
@@ -200,6 +197,7 @@ public:
     buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
     info_pos = buf_pos;
 
+    // THIS IS KUSHAGRA'S VERSION OF ALL MINIMIZERS AS ON SEP 9
     #if 1
     if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
       for (j = buf_pos; j < w; ++j)
@@ -325,7 +323,7 @@ public:
       minimizer_helper(kmer_int, strand);
     }
   }
-  #endif 
+
 };
 // ****************************** Souvadra's addition ends ************************* //
 
@@ -341,7 +339,7 @@ public:
   mer_counter_base(int nb_threads, mer_hash& ary, stream_manager_type& streams,
                    OPERATION op, filter* filter = new struct filter)
     : ary_(ary)
-    , parser_(mer_dna::k()+mer_dna::k()-1, streams.nb_streams(), 3 * nb_threads, 16, streams)
+    , parser_(mer_dna::k()+mer_dna::k(), streams.nb_streams(), 3 * nb_threads, 24, streams)
     , filter_(filter)
     , op_(op)
   {
@@ -357,13 +355,15 @@ public:
     star_mers_type buf_mer_2[256]; // Souvadra's addition
     star_mers_type min_mer; // Souvadra's addition
     bool min_initialized = 0; // Souvadra's addition
+    int skip_min = 1; // Souvadra's addition
     switch(op_) {
      case COUNT:
       // std::cout << "Counting Happening" << std::endl; // Souvadra's addition
       int mer_pos; //Souvadra's addition
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
-          std::cout << mers->get_skip() << std::endl; 
+          //if (mers->get_skip()) std::cout << "True " << std::endl;
+          if (mers->get_skip()) skip_min = -1; 
           mmf.select_minimizer(mers->get_kmer_int(), mers->get_rid(), mers->get_strand());
           // std::cout << mers->to_str() << " -- " << mers->get_rid() << " -- " << mers->get_kmer_int() << std::endl; // Souvadra's addition
           buf_mer_2[mmf.info_pos] = *mers; 
@@ -372,12 +372,21 @@ public:
           while (!mmf.return_mer.empty()) {
             mer_pos = mmf.return_mer.back();
             if (mer_pos == -1) {
+              //std::cout << "line 376 |";
+              //std::cout << "skip_min: " << skip_min <<"|| ";
+              //if (skip_min == 0) std::cout << "Skip the minimizer: ";
+              //std::cout << min_mer << std::endl;
               //std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_kmer_int() << std::endl;
-              if (min_initialized == 1) ary_.add(min_mer, 1);
+              if (skip_min != 0) {if (min_initialized == 1) ary_.add(min_mer, 1);}
+              skip_min++;
             } 
             else {
               //std::cout << buf_mer_2[mer_pos].to_str() << " -- " << buf_mer_2[mer_pos].get_rid() << " -- " << buf_mer_2[mer_pos].get_kmer_int() << std::endl;
-              ary_.add((buf_mer_2[mer_pos]), 1); 
+              //std::cout << "line 384 |";
+              //if (skip_min == 0) std::cout << "Skip the minimizer: ";
+              //std::cout << buf_mer_2[mer_pos] << std::endl;
+              if (skip_min != 0) ary_.add((buf_mer_2[mer_pos]), 1); 
+              skip_min++;
             }
             mmf.return_mer.pop_back();
           }
@@ -393,7 +402,11 @@ public:
       if (min_initialized == 1) 
       {
         //std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_kmer_int() << std::endl;
-        ary_.add(min_mer, 1); 
+        //std::cout << "line 403 |";
+        //if (skip_min == 0) std::cout << "Skip the minimizer: ";
+        //std::cout << min_mer << std::endl;
+        if (skip_min != 0) ary_.add(min_mer, 1); 
+        skip_min++;
       }// basically the last min_mer left
       break;
 
