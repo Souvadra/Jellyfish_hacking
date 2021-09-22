@@ -168,6 +168,8 @@ public:
   int info_pos;
   std::vector<int> return_mer; // Souvadra's  addition
   uint32_t rid = UINT32_MAX;
+  uint32_t job_id = UINT32_MAX;
+  int skip_min; 
 
   minimizer_factory(int k, int w) {
     assert((w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
@@ -185,26 +187,20 @@ public:
     ++l;
 
     if (l >= k && kmer_span < 256) {
-      // std::cout << "KMER INT: " << kmer_int << std::endl;
-      // std::cout << "HASHER: " << hash64(kmer_int, mask) << std::endl;
-
       info.x = hash64(kmer_int, mask) << 8 | kmer_span;
-			info.y = (uint64_t)rid<<32 | (uint32_t)i<<1 | z;
-
-      // std::cout << "INFO: " << info.x << std::endl;
+			info.y = (uint64_t)rid; //(uint64_t)rid<<32 | (uint32_t)i<<1 | z;
     }
 
     buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
     info_pos = buf_pos;
 
     // THIS IS KUSHAGRA'S VERSION OF ALL MINIMIZERS AS ON SEP 9
-    #if 1
+    #if 0
     if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
       for (j = buf_pos; j < w; ++j)
       {
         if (min.x == buf[j].x && j!= min_pos)
         {
-          // std::cout << "LOOPING IN FIRST WINDOW " << j << " " << buf[j].x << " " << std::endl;
           return_mer.push_back(j);
         }
       }
@@ -212,7 +208,6 @@ public:
       {
         if (min.x == buf[j].x && j!= min_pos)
         {
-          // std::cout << "LOOPING IN FIRST WINDOW " << j << " " << buf[j].x << " " << std::endl;
           return_mer.push_back(j);
         }
       }
@@ -222,7 +217,6 @@ public:
       new_min = true;
       if (l >= w + k && min.x != UINT64_MAX) 
       {
-        // std::cout << "NEW MINIMIZER " << min.x << " " << std::endl;
         return_mer.push_back(-1);
       } // -1 signifies push the old min_mer to the ary_ hash function
       min = info, min_pos = buf_pos;
@@ -232,7 +226,6 @@ public:
       new_min = true;
       if (l >= w + k - 1 && min.x != UINT64_MAX)
       {
-        // std::cout << "OUT OF WINDOW MINIMIZER " << min.x << " " << std::endl;
         return_mer.push_back(-1);
       }
       for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
@@ -246,7 +239,6 @@ public:
         {
           if (min.x == buf[j].x && min_pos!=j)
           {
-            // std::cout << "LOOPING IN OUT OF WINDOW MINIMIZER " << buf[j].x << " " << std::endl;
             return_mer.push_back(j);
           }
         }
@@ -254,7 +246,6 @@ public:
         {
           if (min.x == buf[j].x && min_pos!=j)
           {
-            // std::cout << "LOOPING IN OUT OF WINDOW MINIMIZER " << buf[j].x << " " << std::endl;
             return_mer.push_back(j);
           }
         }  
@@ -262,10 +253,8 @@ public:
     }
     #endif
 
-
-
   // THIS IS KUSHAGRA'S VERSION OF ROBUST WINNOWING AS ON SEP 4
-    #if 0
+    #if 1
     int if_flag = 0;
 
     if (info.x <= min.x && l<= w+k-1) // get right most in first window
@@ -281,7 +270,7 @@ public:
       new_min = true;
       if (min.x != UINT64_MAX)
       {
-        return_mer.push_back(-1);
+        if (min.y == info.y) return_mer.push_back(-1);
         // std::cout << min.x << std::endl;
       }
       min = info, min_pos = buf_pos;
@@ -294,7 +283,7 @@ public:
       new_min = true;
       if (l >= w + k -1 && min.x != UINT64_MAX)
       {
-        return_mer.push_back(-1);
+        if (min.y == info.y) return_mer.push_back(-1);
         // std::cout << min.x << std::endl;
       }
       min = { UINT64_MAX, UINT64_MAX };
@@ -308,18 +297,41 @@ public:
     if (++buf_pos == w) buf_pos = 0;
   }
 
-  void select_minimizer(uint64_t kmer_int, uint32_t rid, int strand) {
-    if (this->rid != rid) {
-        // memset(buf, 0xff, w * 16);
-        this->rid = rid;
-        if (rid != 0) 
-        {
-          return_mer.push_back(-1); // -1 signifies me to push the min_mer stored in the count function 
-        }
-        min = { UINT64_MAX, UINT64_MAX };
-        this->l = this->k - 1; 
-        minimizer_helper(kmer_int, strand);
-    } else {
+  void select_minimizer(uint64_t kmer_int, uint32_t rid, int strand, uint32_t job_id) {
+    if ((this->rid != rid) and (this->job_id != job_id)) {
+      std::cout << "both rid and job id changed " << std::endl; 
+      if (rid != 0) {return_mer.push_back(-1); std::cout << "line 305 | ";}
+      this->rid = rid;
+      this->job_id = job_id;
+      min = { UINT64_MAX, UINT64_MAX };
+      memset(buf, 0xff, w * 16);
+      this->l = this->k - 1;
+      minimizer_helper(kmer_int, strand);
+    } else if ((this->rid != rid) and (this->job_id == job_id)) {
+      std::cout << "rid changed " << std::endl; 
+      // memset(buf, 0xff, w * 16);
+      this->rid = rid;
+      #if 0
+        if (rid != 0) { 
+          this->skip_min = 1;
+          if (this->l >= this->w + this->k -1) return_mer.push_back(-1); // -1 signifies me to push the min_mer stored in the count function 
+          //else this->skip_min = 1;
+          if (this->l >= this->w + this->k -1) std::cout << "line 305 |" ;
+        } 
+      #endif
+      min = { UINT64_MAX, UINT64_MAX };
+      this->l = this->k - 1; 
+      minimizer_helper(kmer_int, strand); 
+    } else if ((this->rid == rid) and (this->job_id != job_id)) {
+      std::cout << "job id changed" << std::endl;
+      memset(buf, 0xff, w * 16);
+      this->job_id = job_id;
+      min = { UINT64_MAX, UINT64_MAX };
+      this->l = this->k - 1;
+      minimizer_helper(kmer_int, strand);
+    }
+    else {
+      //std::cout << "nothing changed " << std::endl; 
       minimizer_helper(kmer_int, strand);
     }
   }
@@ -355,20 +367,22 @@ public:
     star_mers_type buf_mer_2[256]; // Souvadra's addition
     star_mers_type min_mer; // Souvadra's addition
     bool min_initialized = 0; // Souvadra's addition
-    int skip_min = 1; // Souvadra's addition
+    mmf.skip_min = 1; // Souvadra's addition
     switch(op_) {
      case COUNT:
       // std::cout << "Counting Happening" << std::endl; // Souvadra's addition
       int mer_pos; //Souvadra's addition
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
+          //std::cout << mers->to_str() << " " << "rid: " << mers->get_rid() << "  job id:" << mers->get_job_id() << std::endl;
           //if (mers->get_skip()) std::cout << "True " << std::endl;
-          if (mers->get_skip()) skip_min = -1; 
-          mmf.select_minimizer(mers->get_kmer_int(), mers->get_rid(), mers->get_strand());
+          // if (mers->get_skip()) mmf.skip_min = -1; 
+          mmf.select_minimizer(mers->get_kmer_int(), mers->get_rid(), mers->get_strand(), mers->get_job_id());
           // std::cout << mers->to_str() << " -- " << mers->get_rid() << " -- " << mers->get_kmer_int() << std::endl; // Souvadra's addition
           buf_mer_2[mmf.info_pos] = *mers; 
           buf_mer_2[mmf.info_pos].set_kmer_int(mers->get_kmer_int()); // Is it required ???
           buf_mer_2[mmf.info_pos].set_rid(mers->get_rid()); // Is it required ???    
+          buf_mer_2[mmf.info_pos].set_job_id(mers->get_job_id()); // Is it required ??? 
           while (!mmf.return_mer.empty()) {
             mer_pos = mmf.return_mer.back();
             if (mer_pos == -1) {
@@ -376,17 +390,20 @@ public:
               //std::cout << "skip_min: " << skip_min <<"|| ";
               //if (skip_min == 0) std::cout << "Skip the minimizer: ";
               //std::cout << min_mer << std::endl;
-              //std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_kmer_int() << std::endl;
-              if (skip_min != 0) {if (min_initialized == 1) ary_.add(min_mer, 1);}
-              skip_min++;
+              std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_job_id() << " <-- line 370";
+              if (mmf.skip_min == 0) std::cout << "Skip the minimizer " << std::endl;
+              else std::cout << std::endl;
+              if (mmf.skip_min != 0) {if (min_initialized == 1) ary_.add(min_mer, 1);}
+              mmf.skip_min++;
             } 
             else {
-              //std::cout << buf_mer_2[mer_pos].to_str() << " -- " << buf_mer_2[mer_pos].get_rid() << " -- " << buf_mer_2[mer_pos].get_kmer_int() << std::endl;
+              std::cout << buf_mer_2[mer_pos].to_str() << " -- " << buf_mer_2[mer_pos].get_rid() << " -- " << buf_mer_2[mer_pos].get_job_id() << " <-- line 377";
               //std::cout << "line 384 |";
-              //if (skip_min == 0) std::cout << "Skip the minimizer: ";
+              if (mmf.skip_min == 0) std::cout << "line 373 Skip the minimizer " << std::endl;
+              else std::cout << std::endl;
               //std::cout << buf_mer_2[mer_pos] << std::endl;
-              if (skip_min != 0) ary_.add((buf_mer_2[mer_pos]), 1); 
-              skip_min++;
+              if (mmf.skip_min != 0) ary_.add((buf_mer_2[mer_pos]), 1); 
+              mmf.skip_min++;
             }
             mmf.return_mer.pop_back();
           }
@@ -394,6 +411,7 @@ public:
             min_mer = buf_mer_2[mmf.min_pos]; 
             min_mer.set_kmer_int(buf_mer_2[mmf.min_pos].get_kmer_int()); // Is it required ???
             min_mer.set_rid(buf_mer_2[mmf.min_pos].get_rid()); // Is it required ???
+            min_mer.set_job_id(buf_mer_2[mmf.min_pos].get_job_id()); // Is it required ??? 
             min_initialized = 1; 
           }
         }
@@ -401,12 +419,13 @@ public:
       }
       if (min_initialized == 1) 
       {
-        //std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_kmer_int() << std::endl;
-        //std::cout << "line 403 |";
-        //if (skip_min == 0) std::cout << "Skip the minimizer: ";
+        std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_job_id() << " <-- 398";
+        if (mmf.skip_min == 0) std::cout << "Skip the minimizer " << std::endl;
+        else std::cout << std::endl;//std::cout << "line 403 |";
+        //if (mmf.skip_min == 0) std::cout << "Skip the minimizer: ";
         //std::cout << min_mer << std::endl;
-        if (skip_min != 0) ary_.add(min_mer, 1); 
-        skip_min++;
+        if (mmf.skip_min != 0) ary_.add(min_mer, 1); 
+        mmf.skip_min++;
       }// basically the last min_mer left
       break;
 

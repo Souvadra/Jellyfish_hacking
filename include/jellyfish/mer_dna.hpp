@@ -147,6 +147,7 @@ public:
   uint64_t kmer_int; // Souvadra's addition
   int strand; // Souvadra's addition
   bool should_skip; // Souvadra's addition
+  uint32_t job_id; // Souvadra's addition
   typedef typename mer_dna_traits<derived>::base_type base_type;
 
   enum { CODE_A, CODE_C, CODE_G, CODE_T,
@@ -476,6 +477,13 @@ public:
   }
   uint32_t get_rid() const {
     return this->rid;
+  }
+
+  void set_job_id(uint32_t job_id_val) {
+    this->job_id = job_id_val;
+  }
+  uint32_t get_job_id() const {
+    return this->job_id;
   }
 
   void set_kmer_int(uint64_t kmer_int_val) {
