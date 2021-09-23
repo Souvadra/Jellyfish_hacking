@@ -169,7 +169,6 @@ public:
   std::vector<int> return_mer; // Souvadra's  addition
   uint32_t rid = UINT32_MAX;
   uint32_t job_id = UINT32_MAX;
-  int skip_min; 
 
   minimizer_factory(int k, int w) {
     assert((w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
@@ -299,32 +298,26 @@ public:
 
   void select_minimizer(uint64_t kmer_int, uint32_t rid, int strand, uint32_t job_id) {
     if ((this->rid != rid) and (this->job_id != job_id)) {
-      std::cout << "both rid and job id changed " << std::endl; 
-      if (rid != 0) {return_mer.push_back(-1); std::cout << "line 305 | ";}
+      std::cout << "both rid and job id changed " << std::endl;
       this->rid = rid;
       this->job_id = job_id;
+      if (rid != 0) {if (this->l >= this->w + this->k -1) return_mer.push_back(-1); std::cout << "line 305 | ";}
       min = { UINT64_MAX, UINT64_MAX };
-      memset(buf, 0xff, w * 16);
       this->l = this->k - 1;
       minimizer_helper(kmer_int, strand);
     } else if ((this->rid != rid) and (this->job_id == job_id)) {
       std::cout << "rid changed " << std::endl; 
       // memset(buf, 0xff, w * 16);
       this->rid = rid;
-      #if 0
-        if (rid != 0) { 
-          this->skip_min = 1;
-          if (this->l >= this->w + this->k -1) return_mer.push_back(-1); // -1 signifies me to push the min_mer stored in the count function 
-          //else this->skip_min = 1;
-          if (this->l >= this->w + this->k -1) std::cout << "line 305 |" ;
-        } 
-      #endif
+      if (rid != 0) { 
+        if (this->l >= this->w + this->k -1) return_mer.push_back(-1); // -1 signifies me to push the min_mer stored in the count function 
+        if (this->l >= this->w + this->k -1) std::cout << "line 305 |" ;
+      } 
       min = { UINT64_MAX, UINT64_MAX };
       this->l = this->k - 1; 
       minimizer_helper(kmer_int, strand); 
     } else if ((this->rid == rid) and (this->job_id != job_id)) {
       std::cout << "job id changed" << std::endl;
-      memset(buf, 0xff, w * 16);
       this->job_id = job_id;
       min = { UINT64_MAX, UINT64_MAX };
       this->l = this->k - 1;
@@ -367,7 +360,6 @@ public:
     star_mers_type buf_mer_2[256]; // Souvadra's addition
     star_mers_type min_mer; // Souvadra's addition
     bool min_initialized = 0; // Souvadra's addition
-    mmf.skip_min = 1; // Souvadra's addition
     switch(op_) {
      case COUNT:
       // std::cout << "Counting Happening" << std::endl; // Souvadra's addition
@@ -375,8 +367,6 @@ public:
       for (; mers; ++mers) {
         if((*filter_)(*mers)) {
           //std::cout << mers->to_str() << " " << "rid: " << mers->get_rid() << "  job id:" << mers->get_job_id() << std::endl;
-          //if (mers->get_skip()) std::cout << "True " << std::endl;
-          // if (mers->get_skip()) mmf.skip_min = -1; 
           mmf.select_minimizer(mers->get_kmer_int(), mers->get_rid(), mers->get_strand(), mers->get_job_id());
           // std::cout << mers->to_str() << " -- " << mers->get_rid() << " -- " << mers->get_kmer_int() << std::endl; // Souvadra's addition
           buf_mer_2[mmf.info_pos] = *mers; 
@@ -387,23 +377,14 @@ public:
             mer_pos = mmf.return_mer.back();
             if (mer_pos == -1) {
               //std::cout << "line 376 |";
-              //std::cout << "skip_min: " << skip_min <<"|| ";
-              //if (skip_min == 0) std::cout << "Skip the minimizer: ";
-              //std::cout << min_mer << std::endl;
-              std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_job_id() << " <-- line 370";
-              if (mmf.skip_min == 0) std::cout << "Skip the minimizer " << std::endl;
-              else std::cout << std::endl;
-              if (mmf.skip_min != 0) {if (min_initialized == 1) ary_.add(min_mer, 1);}
-              mmf.skip_min++;
+              std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_job_id() << " <-- line 370" << std::endl;
+              if (min_initialized == 1) ary_.add(min_mer, 1);
+    
             } 
             else {
-              std::cout << buf_mer_2[mer_pos].to_str() << " -- " << buf_mer_2[mer_pos].get_rid() << " -- " << buf_mer_2[mer_pos].get_job_id() << " <-- line 377";
-              //std::cout << "line 384 |";
-              if (mmf.skip_min == 0) std::cout << "line 373 Skip the minimizer " << std::endl;
-              else std::cout << std::endl;
-              //std::cout << buf_mer_2[mer_pos] << std::endl;
-              if (mmf.skip_min != 0) ary_.add((buf_mer_2[mer_pos]), 1); 
-              mmf.skip_min++;
+              std::cout << buf_mer_2[mer_pos].to_str() << " -- " << buf_mer_2[mer_pos].get_rid() << " -- " << buf_mer_2[mer_pos].get_job_id() << " <-- line 377" << std::endl;
+              ary_.add((buf_mer_2[mer_pos]), 1); 
+    
             }
             mmf.return_mer.pop_back();
           }
@@ -419,13 +400,8 @@ public:
       }
       if (min_initialized == 1) 
       {
-        std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_job_id() << " <-- 398";
-        if (mmf.skip_min == 0) std::cout << "Skip the minimizer " << std::endl;
-        else std::cout << std::endl;//std::cout << "line 403 |";
-        //if (mmf.skip_min == 0) std::cout << "Skip the minimizer: ";
-        //std::cout << min_mer << std::endl;
-        if (mmf.skip_min != 0) ary_.add(min_mer, 1); 
-        mmf.skip_min++;
+        std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_job_id() << " <-- 398" << std::endl;
+        ary_.add(min_mer, 1); 
       }// basically the last min_mer left
       break;
 
