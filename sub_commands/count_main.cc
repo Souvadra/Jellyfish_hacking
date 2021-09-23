@@ -156,13 +156,13 @@ typedef struct { // a simplified version of kdq
 #define star_mers_type jellyfish::mer_dna_ns::mer_base_static<long unsigned int, 0> 
 class minimizer_factory {
 private:
-  int k, w;
   uint64_t shift1, mask;
   //uint64_t kmer[2] = {0,0}; // is it required anymore??? 
-  int i, j, l, buf_pos = 0;
   int kmer_span;
   mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
 public:
+  int k, w;
+  int j, l, buf_pos = 0;
   int min_pos = 0;
   bool new_min = false;
   int info_pos;
@@ -269,7 +269,8 @@ public:
       new_min = true;
       if (min.x != UINT64_MAX)
       {
-        if (min.y == info.y) return_mer.push_back(-1);
+        //if (min.y == info.y) return_mer.push_back(-1);
+        return_mer.push_back(-1);
         // std::cout << min.x << std::endl;
       }
       min = info, min_pos = buf_pos;
@@ -282,7 +283,8 @@ public:
       new_min = true;
       if (l >= w + k -1 && min.x != UINT64_MAX)
       {
-        if (min.y == info.y) return_mer.push_back(-1);
+        //if (min.y == info.y) return_mer.push_back(-1);
+        return_mer.push_back(-1);
         // std::cout << min.x << std::endl;
       }
       min = { UINT64_MAX, UINT64_MAX };
@@ -301,26 +303,26 @@ public:
       std::cout << "both rid and job id changed " << std::endl;
       this->rid = rid;
       this->job_id = job_id;
-      if (rid != 0) {if (this->l >= this->w + this->k -1) return_mer.push_back(-1); std::cout << "line 305 | ";}
+      if (rid != 0) {if (l >= w + k -1) return_mer.push_back(-1); std::cout << "line 305 | ";}
       min = { UINT64_MAX, UINT64_MAX };
-      this->l = this->k - 1;
+      l = k - 1;
       minimizer_helper(kmer_int, strand);
     } else if ((this->rid != rid) and (this->job_id == job_id)) {
       std::cout << "rid changed " << std::endl; 
       // memset(buf, 0xff, w * 16);
       this->rid = rid;
       if (rid != 0) { 
-        if (this->l >= this->w + this->k -1) return_mer.push_back(-1); // -1 signifies me to push the min_mer stored in the count function 
-        if (this->l >= this->w + this->k -1) std::cout << "line 305 |" ;
+        if (l >= w + k -1) return_mer.push_back(-1); // -1 signifies me to push the min_mer stored in the count function 
+        if (l >= w + k -1) std::cout << "line 305 |" ;
       } 
       min = { UINT64_MAX, UINT64_MAX };
-      this->l = this->k - 1; 
+      l = k - 1; 
       minimizer_helper(kmer_int, strand); 
     } else if ((this->rid == rid) and (this->job_id != job_id)) {
       std::cout << "job id changed" << std::endl;
       this->job_id = job_id;
       min = { UINT64_MAX, UINT64_MAX };
-      this->l = this->k - 1;
+      l = k - 1;
       minimizer_helper(kmer_int, strand);
     }
     else {
@@ -400,8 +402,10 @@ public:
       }
       if (min_initialized == 1) 
       {
-        std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_job_id() << " <-- 398" << std::endl;
-        ary_.add(min_mer, 1); 
+        if (mmf.l >= mmf.w + mmf.k -1) {
+          std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_job_id() << " <-- 398" << std::endl;
+          ary_.add(min_mer, 1); 
+        }
       }// basically the last min_mer left
       break;
 
