@@ -169,7 +169,7 @@ public:
   uint32_t rid = UINT32_MAX;
 
   minimizer_factory(int k, int w) {
-    assert((w > 0 && w < 256) && (k > 0 && k <= 56)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
+    assert((w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
     this->k = k;
     this->w = w;
     shift1 = 2 * (k - 1);
