@@ -55,6 +55,7 @@ public:
   const mer_type* operator->() const { return &this->operator*(); }
   mer_iterator& operator++() {
     while(true) {
+      //if (cseq_ == (*job_)->start) std::cout << cseq_ << " | line 59" << std::endl; // Souvadra's addition
       while(cseq_ == (*job_)->end) {
         job_->next();
         if(job_->is_empty()) {
@@ -64,7 +65,8 @@ public:
           return *this;
         }
         cseq_   = (*job_)->start;
-        std::cout << "line 67 @mer_iterator.hpp " << std::endl;
+        //std::cout << cseq_ << " | line 70" << std::endl; // Souvadra's addition
+        //std::cout << "line 67 @mer_iterator.hpp " << std::endl;
         filled_ = 0;
       }
 
@@ -84,7 +86,7 @@ public:
           //if (filled_ == 1) std::cout << "filled is 1" << std::endl; // Souvadra's addition
           //if (filled_ == 1) read_number += 1; // need to send this signal to count_main.cc somehow to update "rid" variable
         } else {
-            std::cout << "line 85 @mer_iterator.hpp" << std::endl;
+            //std::cout << "line 85 @mer_iterator.hpp" << std::endl;
             read_number += 1; // Souvadra's addition
             filled_ = 0;
         }
