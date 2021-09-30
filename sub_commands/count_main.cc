@@ -326,7 +326,7 @@ public:
   mer_counter_base(int nb_threads, mer_hash& ary, stream_manager_type& streams,
                    OPERATION op, filter* filter = new struct filter)
     : ary_(ary)
-    , parser_(1, streams.nb_streams(), 3 * nb_threads, (27*(mer_dna::r()+1)), streams)
+    , parser_(1, streams.nb_streams(), 3 * nb_threads, ((4096 / mer_dna::r())*(mer_dna::r()+1)), streams)
     , filter_(filter)
     , op_(op)
   {
