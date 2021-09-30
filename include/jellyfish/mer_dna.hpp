@@ -695,7 +695,22 @@ public:
     if(k != k_)
       throw std::length_error(error_different_k);
   }
+  // Kushagra addition starts here
+  // mer_base_static() : super(w_) { }
+  // explicit mer_base_static(unsigned int w) : super(w_) {
+  //   if(w != w_)
+  //     throw std::length_error(error_different_k);
+  // }
+  // mer_base_static() : super(r_) { }
+  // explicit mer_base_static(unsigned int r) : super(r_) {
+  //   if(r != r_)
+  //     throw std::length_error(error_different_k);
+  // }
+  // Kushagra addition ends here
+
+
   mer_base_static(const mer_base_static& rhs) : super(rhs) { }
+
 
   mer_base_static(unsigned int k, const char* s) : super(k_) {
     super::from_chars(s);
@@ -706,28 +721,88 @@ public:
   explicit mer_base_static(const std::string& s) : super(k_) {
     super::from_chars(s.begin());
   }
+  // Kushagra addition starts here
+  // mer_base_static(unsigned int w, const char* s) : super(w_) {
+  //   super::from_chars(s);
+  // }
+  // explicit mer_base_static(const char* s) : super(w_) {
+  //   super::from_chars(s);
+  // }
+  // explicit mer_base_static(const std::string& s) : super(w_) {
+  //   super::from_chars(s.begin());
+  // }
+  // mer_base_static(unsigned int r, const char* s) : super(r_) {
+  //   super::from_chars(s);
+  // }
+  // explicit mer_base_static(const char* s) : super(r_) {
+  //   super::from_chars(s);
+  // }
+  // explicit mer_base_static(const std::string& s) : super(r_) {
+  //   super::from_chars(s.begin());
+  // }
+  // Kushagra addition ends here
+
 
   template<typename U>
   mer_base_static(unsigned int k, const U& rhs) : super(k_, rhs) {
     if(k != k_)
       throw std::length_error(error_different_k);
   }
+  // Kushagra addition starts here
+  // template<typename U>
+  // mer_base_static(unsigned int w, const U& rhs) : super(w_, rhs) {
+  //   if(w != w_)
+  //     throw std::length_error(error_different_k);
+  // }
+  // template<typename U>
+  // mer_base_static(unsigned int r, const U& rhs) : super(r_, rhs) {
+  //   if(r != r_)
+  //     throw std::length_error(error_different_k);
+  // }
+  // Kushagra addition ends here
+
 
   mer_base_static& operator=(const char* s) { return super::operator=(s); }
   mer_base_static& operator=(const std::string& s) { return super::operator=(s); }
 
   ~mer_base_static() { }
 
+
   static unsigned int k(); // { return k_; }
   static unsigned int k(unsigned int k) { std::swap(k, k_); return k; }
+  // Kushagra addition starts here
+  static unsigned int w(); // { return w_; }
+  static unsigned int w(unsigned int w) { std::swap(w, w_); return w; }
+  static unsigned int r(); // { return r_; }
+  static unsigned int r(unsigned int r) { std::swap(r, r_); return r; }
+  // Kushagra addition ends here
+
 
 private:
   static unsigned int k_;
+  static unsigned int w_; // Kushagra addition
+  static unsigned int r_; // Kushagra addition
 };
 template<typename T, int CI>
 unsigned int mer_base_static<T, CI>::k_ = 22;
+// Kushagra addition starts here
+template<typename T, int CI>
+unsigned int mer_base_static<T, CI>::w_ = 22;
+template<typename T, int CI>
+unsigned int mer_base_static<T, CI>::r_ = 150;
+// Kushagra addition ends here
+
+
 template<typename T, int CI>
 unsigned int mer_base_static<T, CI>::k() { return k_; }
+// Kushagra addition starts here
+template<typename T, int CI>
+unsigned int mer_base_static<T, CI>::w() { return w_; }
+template<typename T, int CI>
+unsigned int mer_base_static<T, CI>::r() { return r_; }
+// Kushagra addition ends here
+
+
 template<typename T, int CI>
 const int mer_base_static<T, CI>::class_index;
 
@@ -753,7 +828,6 @@ inline std::istream& operator>>(std::istream& is, mer_base<derived>& mer) {
   }
 
   char buffer[mer.k() + 1];
-  std::cout << "mer_dna.hpp @line 727" << std::endl;
   is.read(buffer, mer.k());
   if(is.gcount() != mer.k())
     goto error;

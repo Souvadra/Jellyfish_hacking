@@ -326,7 +326,7 @@ public:
   mer_counter_base(int nb_threads, mer_hash& ary, stream_manager_type& streams,
                    OPERATION op, filter* filter = new struct filter)
     : ary_(ary)
-    , parser_(1, streams.nb_streams(), 3 * nb_threads, (27*(150+1)), streams)
+    , parser_(1, streams.nb_streams(), 3 * nb_threads, (27*(mer_dna::r()+1)), streams)
     , filter_(filter)
     , op_(op)
   {
@@ -337,7 +337,8 @@ public:
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
     int k = mers->k();
-    int w = mers->k(); // this is  hardcoded for now, will need to change it later <-- Souvadra
+    int w = mer_dna::w(); // Kushagra addition
+    // std::cout << "Values are: " << k << " " << w << std::endl;
     minimizer_factory mmf(k, w); // w value hardcoded, NEET TO CHANGE
     star_mers_type buf_mer_2[256]; // Souvadra's addition
     star_mers_type min_mer; // Souvadra's addition
@@ -475,6 +476,8 @@ int count_main(int argc, char *argv[])
   }
 
   mer_dna::k(args.mer_len_arg);
+  mer_dna::w(args.window_len_arg); // Kushagra addition
+  mer_dna::r(args.read_len_arg); // Kushagra addition
 
   std::unique_ptr<jellyfish::generator_manager> generator_manager;
   if(args.generator_given) {
