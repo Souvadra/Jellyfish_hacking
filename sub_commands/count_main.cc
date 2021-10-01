@@ -134,8 +134,6 @@ typedef struct { uint64_t x, y; } mm128_t;
 typedef struct { size_t n, m; mm128_t *a; } mm128_v;
 
 static inline uint64_t hash64(uint64_t key, uint64_t mask) {
-
-  // std::cout << "INPUT key is: " << key << std::endl;
 	key = (~key + (key << 21)) & mask; // key = (key << 21) - key - 1;
 	key = key ^ key >> 24;
 	key = ((key + (key << 3)) + (key << 8)) & mask; // key * 265
@@ -143,8 +141,6 @@ static inline uint64_t hash64(uint64_t key, uint64_t mask) {
 	key = ((key + (key << 2)) + (key << 4)) & mask; // key * 21
 	key = key ^ key >> 28;
 	key = (key + (key << 31)) & mask;
-  // std::cout << "OUTPUT key is: " << key << std::endl;
-  // std::cout << std::endl;
 	return key;
 }
 
@@ -180,6 +176,8 @@ public:
     memset(buf, 0xff, w * 16);
   }
 
+  // THIS IS KUSHAGRA'S VERSION OF ROBUST WINNOWING AS ON SEP 4
+  #if 0
   void minimizer_helper(uint64_t kmer_int, int z) {
     new_min = false;
     mm128_t info = { UINT64_MAX, UINT64_MAX };
@@ -193,99 +191,29 @@ public:
     buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
     info_pos = buf_pos;
 
-    // THIS IS KUSHAGRA'S VERSION OF ALL MINIMIZERS AS ON SEP 9
-    #if 0
-    if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window -because identical k-mers are not stored yet
-      for (j = buf_pos; j < w; ++j)
-      {
-        if (min.x == buf[j].x && j!= min_pos)
-        {
-          return_mer.push_back(j);
-        }
-      }
-      for (j = 0; j < buf_pos; ++j)
-      {
-        if (min.x == buf[j].x && j!= min_pos)
-        {
-          return_mer.push_back(j);
-        }
-      }
-		}
-
-    if (info.x <= min.x) { // a new minimum; then write the old min
-      new_min = true;
-      if (l >= w + k && min.x != UINT64_MAX) 
-      {
-        return_mer.push_back(-1);
-      } // -1 signifies push the old min_mer to the ary_ hash function
-      min = info, min_pos = buf_pos;
-    }
-
-    else if (buf_pos == min_pos) { // old min has moved outside the window
-      new_min = true;
-      if (l >= w + k - 1 && min.x != UINT64_MAX)
-      {
-        return_mer.push_back(-1);
-      }
-      for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
-        if (min.x >= buf[j].x) min = buf[j], min_pos = j; //  >= is important s.t. min is always the closest k-mer
-      for (j = 0; j <= buf_pos; ++j)
-        if (min.x >= buf[j].x) min = buf[j], min_pos = j; 
-
-      if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
-
-        for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
-        {
-          if (min.x == buf[j].x && min_pos!=j)
-          {
-            return_mer.push_back(j);
-          }
-        }
-        for (j = 0; j <= buf_pos; ++j)
-        {
-          if (min.x == buf[j].x && min_pos!=j)
-          {
-            return_mer.push_back(j);
-          }
-        }  
-			}
-    }
-    #endif
-
-  // THIS IS KUSHAGRA'S VERSION OF ROBUST WINNOWING AS ON SEP 4
-    #if 1
     int if_flag = 0;
 
-    if (info.x <= min.x && l<= w+k-1) // get right most in first window
-    {
-      new_min = true;
+    if (info.x <= min.x && l<= w+k-1) { // get right most in first window
+      new_min = true; 
       min = info;
       min_pos = buf_pos;
-
       if_flag = 1;
     }
-    if (info.x < min.x && l>= w+k)
-    {
+    if (info.x < min.x && l>= w+k) {
       new_min = true;
-      if (min.x != UINT64_MAX)
-      {
+      if (min.x != UINT64_MAX) {
         //if (min.y == info.y) return_mer.push_back(-1);
         return_mer.push_back(-1);
-        // std::cout << min.x << std::endl;
       }
       min = info, min_pos = buf_pos;
-
       if_flag = 1;
     }
 
-    if (buf_pos == min_pos && if_flag == 0) // old min has moved outside the window
-    { 
+    if (buf_pos == min_pos && if_flag == 0) { // old min has moved outside the window
       new_min = true;
-      if (l >= w + k -1 && min.x != UINT64_MAX)
-      {
+      if (l >= w + k -1 && min.x != UINT64_MAX) {
         //if (min.y == info.y) return_mer.push_back(-1);
         return_mer.push_back(-1);
-        // std::cout << min.x << std::endl;
       }
       min = { UINT64_MAX, UINT64_MAX };
       for (j = buf_pos + 1; j < w; ++j) // the two loops are necessary when there are identical k-mers
@@ -293,10 +221,10 @@ public:
       for (j = 0; j <= buf_pos; ++j)
         if (buf[j].x <= min.x) min = buf[j], min_pos = j; 
     }
-    #endif
-
     if (++buf_pos == w) buf_pos = 0;
   }
+  #endif
+
 
   void select_minimizer(uint64_t kmer_int, uint32_t rid, int strand, uint32_t job_id) {
     if ((this->rid != rid) and (this->job_id != job_id)) {
@@ -378,16 +306,14 @@ public:
           while (!mmf.return_mer.empty()) {
             mer_pos = mmf.return_mer.back();
             if (mer_pos == -1) {
-              //std::cout << "line 376 |";
               std::cout << min_mer.to_str() << " -- " << min_mer.get_rid() << " -- " << min_mer.get_job_id() << " <-- line 370" << std::endl;
               if (min_initialized == 1) ary_.add(min_mer, 1);
-    
-            } 
+            }
+            /* This else statment will never come in "robust" mode  
             else {
               std::cout << buf_mer_2[mer_pos].to_str() << " -- " << buf_mer_2[mer_pos].get_rid() << " -- " << buf_mer_2[mer_pos].get_job_id() << " <-- line 377" << std::endl;
               ary_.add((buf_mer_2[mer_pos]), 1); 
-    
-            }
+            } */
             mmf.return_mer.pop_back();
           }
           if (mmf.new_min) { 
