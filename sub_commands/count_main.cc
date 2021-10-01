@@ -155,7 +155,7 @@ private:
   uint64_t shift1, mask;
   //uint64_t kmer[2] = {0,0}; // is it required anymore??? 
   int kmer_span;
-  mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
+  uint64_t buf[256], min = UINT64_MAX;
 public:
   int k, w;
   int j, l, buf_pos = 0;
@@ -177,15 +177,14 @@ public:
   }
 
   // THIS IS KUSHAGRA'S VERSION OF ROBUST WINNOWING AS ON SEP 4
-  #if 0
+  #if 1
   void minimizer_helper(uint64_t kmer_int, int z) {
     new_min = false;
-    mm128_t info = { UINT64_MAX, UINT64_MAX };
+    uint64_t info = UINT64_MAX;
     ++l;
 
     if (l >= k && kmer_span < 256) {
-      info.x = hash64(kmer_int, mask) << 8 | kmer_span;
-			info.y = (uint64_t)rid; //(uint64_t)rid<<32 | (uint32_t)i<<1 | z;
+      info = hash64(kmer_int, mask) << 8 | kmer_span;
     }
 
     buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
@@ -193,15 +192,15 @@ public:
 
     int if_flag = 0;
 
-    if (info.x <= min.x && l<= w+k-1) { // get right most in first window
+    if (info <= min && l<= w+k-1) { // get right most in first window
       new_min = true; 
       min = info;
       min_pos = buf_pos;
       if_flag = 1;
     }
-    if (info.x < min.x && l>= w+k) {
+    if (info < min && l>= w+k) {
       new_min = true;
-      if (min.x != UINT64_MAX) {
+      if (min != UINT64_MAX) {
         //if (min.y == info.y) return_mer.push_back(-1);
         return_mer.push_back(-1);
       }
@@ -211,15 +210,15 @@ public:
 
     if (buf_pos == min_pos && if_flag == 0) { // old min has moved outside the window
       new_min = true;
-      if (l >= w + k -1 && min.x != UINT64_MAX) {
+      if (l >= w + k -1 && min != UINT64_MAX) {
         //if (min.y == info.y) return_mer.push_back(-1);
         return_mer.push_back(-1);
       }
-      min = { UINT64_MAX, UINT64_MAX };
+      min = UINT64_MAX;
       for (j = buf_pos + 1; j < w; ++j) // the two loops are necessary when there are identical k-mers
-        if (buf[j].x <= min.x) min = buf[j], min_pos = j; //  >= is important s.t. min is always the closest k-mer
+        if (buf[j] <= min) min = buf[j], min_pos = j; //  >= is important s.t. min is always the closest k-mer
       for (j = 0; j <= buf_pos; ++j)
-        if (buf[j].x <= min.x) min = buf[j], min_pos = j; 
+        if (buf[j] <= min) min = buf[j], min_pos = j; 
     }
     if (++buf_pos == w) buf_pos = 0;
   }
@@ -232,7 +231,7 @@ public:
       this->rid = rid;
       this->job_id = job_id;
       if (rid != 0) {if (l >= w + k -1) return_mer.push_back(-1); std::cout << "line 305 | ";}
-      min = { UINT64_MAX, UINT64_MAX };
+      min = UINT64_MAX;
       l = k - 1;
       minimizer_helper(kmer_int, strand);
     } else if ((this->rid != rid) and (this->job_id == job_id)) {
@@ -243,13 +242,13 @@ public:
         if (l >= w + k -1) return_mer.push_back(-1); // -1 signifies me to push the min_mer stored in the count function 
         if (l >= w + k -1) std::cout << "line 305 |" ;
       } 
-      min = { UINT64_MAX, UINT64_MAX };
+      min = UINT64_MAX;
       l = k - 1; 
       minimizer_helper(kmer_int, strand); 
     } else if ((this->rid == rid) and (this->job_id != job_id)) {
       std::cout << "job id changed" << std::endl;
       this->job_id = job_id;
-      min = { UINT64_MAX, UINT64_MAX };
+      min = UINT64_MAX;
       l = k - 1;
       minimizer_helper(kmer_int, strand);
     }
