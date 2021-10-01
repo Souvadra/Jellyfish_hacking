@@ -323,6 +323,23 @@ public:
     bool min_initialized = 0; // Souvadra's addition
     switch(op_) {
      case COUNT:
+      // code compatible with Chirag sir's code 
+      #if 1
+      int mer_pos;
+      for (; mers; ++mers) {
+        if ((*filter_)(*mers)) {
+          mmf.select_minimizer(mers->get_kmer_int(), mers->get_rid(), mers->get_strand(), mers->get_job_id());
+          while (!mmf.return_mer.empty()) {
+            if (mer_pos == -1) {
+              if (min_initialized == 1)
+            }
+          }
+        }
+      }
+      #endif 
+
+      // The old version of the code 
+      #if 0
       // std::cout << "Counting Happening" << std::endl; // Souvadra's addition
       int mer_pos; //Souvadra's addition
       for (; mers; ++mers) {
@@ -344,7 +361,7 @@ public:
             } */
             mmf.return_mer.pop_back();
           }
-          if (m         min_mer = buf_mer_2[mmf.min_pos]; 
+          if (mmf.min_mer = buf_mer_2[mmf.min_pos]; 
             min_mer.set_kmer_int(buf_mer_2[mmf.min_pos].get_kmer_int()); min_mer.set_rid(buf_mer_2[mmf.min_pos].get_rid()); min_mer.set_job_id(buf_mer_2[mmf.min_pos].get_job_id()); 
             min_initialized = 1; 
           }
@@ -358,6 +375,7 @@ public:
           ary_.add(min_mer, 1); 
         }
       }// basically the last min_mer left
+      #endif
       break;
 
     case PRIME:
