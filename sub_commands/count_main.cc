@@ -167,14 +167,14 @@ public:
   std::vector<int> return_mer; // Souvadra's  addition
   uint32_t rid = 0;
   uint64_t max_value = 0;
-  uint64_t H = 1125894456143381; // hope it works for the time being
+  uint64_t H = 65301; // hope it works for the time being
 
   minimizer_factory(int k, double delta) {
     assert((delta > 0 && delta <= 1) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
     this->k = k;
     this->delta = delta;
     shift1 = 2 * (k - 1);
-    mask = (1ULL<<2*k) - 1;
+    mask = (1ULL<<2*4) - 1; // changed k -> 4 (as per the mindBG paper)
     kmer_span = k;
   }
 
@@ -193,7 +193,9 @@ public:
     }
     std::cout << "max output value = " << max_value << std::endl;
     */
+    //std::cout << info.x << std::endl;
     if (info.x < delta * H) {
+      //std::cout << "came inside the loop " << std::endl;
       new_min = true;
     }
   }
@@ -233,7 +235,7 @@ public:
     size_t count = 0;
     MerIteratorType mers(parser_, args.canonical_flag);
     int k = mer_dna::k();
-    double delta = 2.0 / (k + 1); // density parameter // keeping it equal to 2/(w+1) where k = w 
+    double delta = 0.01; // 2.0 / (k + 1); // density parameter // keeping it equal to 2/(w+1) where k = w 
     minimizer_factory mmf(k,delta); // w value hardcoded, NEET TO CHANGE
     switch(op_) {
      case COUNT:
