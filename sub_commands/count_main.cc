@@ -169,7 +169,7 @@ public:
   uint32_t rid = UINT32_MAX;
 
   minimizer_factory(int k, int w) {
-    assert((w > 0 && w < 256) && (k > 0 && k <= 28)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
+    assert((w > 0 && w < 256) && (k > 0 && k <= 32)); // 56 bits for k-mer; could use long k-mers, but 28 enough in practice
     this->k = k;
     this->w = w;
     shift1 = 2 * (k - 1);
@@ -184,7 +184,7 @@ public:
     ++l;
 
     if (l >= k && kmer_span < 256) {
-      info.x = hash64(kmer_int, mask) << 8 | kmer_span;
+      info.x = hash64(kmer_int, mask);
 			info.y = (uint64_t)rid; //(uint64_t)rid<<32 | (uint32_t)i<<1 | z;
     }
 
