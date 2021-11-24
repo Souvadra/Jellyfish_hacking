@@ -30,6 +30,7 @@
 #include <sstream>
 #include <memory>
 #include <chrono>
+#include <limits>
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -174,6 +175,7 @@ public:
     this->w = w;
     shift1 = 2 * (k - 1);
     mask = (1ULL<<2*k) - 1;
+    if (k == 32) {mask = std::numeric_limits<uint64_t>::max();}
     kmer_span = k; // Do I even need this variable anymore ???
     memset(buf, 0xff, w * 16);
   }
