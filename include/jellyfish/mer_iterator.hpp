@@ -12,6 +12,7 @@
 
 #include <iterator>
 #include <jellyfish/mer_dna.hpp>
+#include <limits>
 
 namespace jellyfish {
 template<typename SequencePool, typename MerType>
@@ -23,7 +24,7 @@ class mer_iterator : public std::iterator<std::input_iterator_tag,MerType> {
   unsigned int                filled_;
   const bool                  canonical_;
   uint32_t                    read_number = 0; //Souvadra's addition
-  uint64_t                    kmer_int[2] = {0,0}; // Souvadra's addition
+  uint64_t                    kmer_int[2] = {0,0}; // Souvadra's addition 
   uint64_t                    mask1 = (1ULL<<2 * m_.k()) - 1; // Souvadra's addition
   uint64_t                    shift1 = 2 * (m_.k()-1); // Souvadra's addition
 public:
@@ -80,6 +81,7 @@ public:
           }
           filled_ = std::min(filled_ + 1, mer_dna::k());
 
+          if (m_.k() == 32) {mask1 = std::numeric_limits<uint64_t>::max();} 
           kmer_int[0] = (kmer_int[0] << 2 | code) & mask1; // forward k-mer // Souvadra's addition
           if (canonical_) kmer_int[1] = (kmer_int[1] >> 2) | (3ULL^code) << shift1; // reverse k-mer // Souvadra's addition
           //std::cout << filled_ << std::endl; 

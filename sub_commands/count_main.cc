@@ -31,6 +31,7 @@
 #include <memory>
 #include <chrono>
 #include <limits>
+#include <bitset>
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -176,6 +177,8 @@ public:
     shift1 = 2 * (k - 1);
     mask = (1ULL<<2*k) - 1;
     if (k == 32) {mask = std::numeric_limits<uint64_t>::max();}
+    std::bitset<64> bitset1{mask};
+    std::cout << bitset1 << std::endl;
     kmer_span = k; // Do I even need this variable anymore ???
     memset(buf, 0xff, w * 16);
   }
@@ -187,6 +190,7 @@ public:
 
     if (l >= k && kmer_span < 256) {
       info.x = hash64(kmer_int, mask);
+      //std::cout << kmer_int << " - " << mask << " - " << info.x << std::endl; // Souvadra's addition
 			info.y = (uint64_t)rid; //(uint64_t)rid<<32 | (uint32_t)i<<1 | z;
     }
 
