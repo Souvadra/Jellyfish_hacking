@@ -1,4 +1,4 @@
-# Jellyfish
+# Minimizer Jellyfish
 
 ## Overview
 
@@ -7,9 +7,7 @@ Jellyfish is a tool for fast, memory-efficient counting of k-mers in DNA. A k-me
 
 JELLYFISH is a command-line program that reads FASTA and multi-FASTA files containing DNA sequences. It outputs its k-mer counts in a binary format, which can be translated into a human-readable text format using the "jellyfish dump" command, or queried for specific k-mers with "jellyfish query". See the [documentation](doc/Readme.md) for details.
 
-If you use Jellyfish in your research, please cite:
-
-  Guillaume Marcais and Carl Kingsford, A fast, lock-free approach for efficient parallel counting of occurrences of k-mers. Bioinformatics (2011) 27(6): 764-770 ([first published online January 7, 2011](http://bioinformatics.oxfordjournals.org/cgi/content/abstract/27/6/764 "Paper on Oxford Bioinformatics website")) doi:10.1093/bioinformatics/btr011
+Here, I have modified Jellyfish to count (w,k)-minimizers along with k-mers. 
 
 ## Installation
 
